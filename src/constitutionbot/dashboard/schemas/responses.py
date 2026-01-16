@@ -230,3 +230,14 @@ class DuplicateCheckResponse(BaseModel):
     has_duplicates: bool
     similar_items: list[SimilarContentItem] = Field(default_factory=list)
     message: str
+
+
+class SafetyCheckResponse(BaseModel):
+    """Content safety check response."""
+
+    level: str  # safe, caution, review_required, blocked
+    is_safe: bool
+    needs_review: bool
+    is_blocked: bool
+    concerns: list[str] = Field(default_factory=list)
+    blocked_reason: Optional[str] = None

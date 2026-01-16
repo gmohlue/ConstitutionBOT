@@ -1,11 +1,13 @@
 """Content suggestion and generation API endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from constitutionbot.core.modes.bot_proposed import BotProposedMode
 from constitutionbot.core.modes.historical import HistoricalMode
 from constitutionbot.core.modes.user_provided import UserProvidedMode
+from constitutionbot.core.safety.filters import ContentFilter
 from constitutionbot.dashboard.auth import require_auth
 from constitutionbot.dashboard.schemas.requests import (
     ContentGenerateRequest,
@@ -15,6 +17,7 @@ from constitutionbot.dashboard.schemas.requests import (
 )
 from constitutionbot.dashboard.schemas.responses import (
     GeneratedContentResponse,
+    SafetyCheckResponse,
     TopicSuggestionResponse,
 )
 from constitutionbot.database import get_session
@@ -267,4 +270,32 @@ async def auto_generate(
         validation_errors=content.validation.errors if content.validation else [],
         validation_warnings=content.validation.warnings if content.validation else [],
         queue_id=item.id,
+    )
+
+
+class SafetyCheckRequest(BaseModel):
+    """Request body for safety check."""
+
+    content: str
+
+
+@router.post("/safety-check", response_model=SafetyCheckResponse)
+async def check_content_safety(
+    request: SafetyCheckRequest,
+    _: str = Depends(require_auth),
+):
+    """Check content for safety issues including profanity and sensitive topics.
+
+    Returns safety level and any concerns found.
+    """
+    content_filter = ContentFilter()
+    result = content_filter.filter(request.content)
+
+    return SafetyCheckResponse(
+        level=result.level.value,
+        is_safe=result.is_safe,
+        needs_review=result.needs_review,
+        is_blocked=result.is_blocked,
+        concerns=result.concerns,
+        blocked_reason=result.blocked_reason,
     )

@@ -141,12 +141,60 @@
                     <!-- Content -->
                     <div>
                         <p class="text-sm font-medium text-gray-500">Content</p>
-                        <div class="mt-2 p-3 bg-gray-50 rounded-md">
+                        <div class="mt-2 p-3 bg-gray-50 rounded-md max-h-96 overflow-y-auto">
                             <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="result?.formatted_content"></p>
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">
-                            <span x-text="result?.formatted_content?.length || 0"></span> characters
-                        </p>
+                        <!-- Content metrics -->
+                        <div class="mt-2 flex flex-wrap gap-3 text-xs">
+                            <!-- Character count (for tweets) -->
+                            <span x-show="result?.content_type === 'tweet'"
+                                  :class="(result?.formatted_content?.length || 0) > 280 ? 'text-red-600 font-medium' : 'text-gray-500'">
+                                <span x-text="result?.formatted_content?.length || 0"></span>/280 characters
+                                <span x-show="(result?.formatted_content?.length || 0) > 280">⚠️ Over limit!</span>
+                            </span>
+                            <!-- Script metrics -->
+                            <template x-if="result?.content_type === 'script'">
+                                <div class="flex flex-wrap gap-3 w-full">
+                                    <span class="text-gray-500">
+                                        <span x-text="(result?.formatted_content || '').split(/\s+/).filter(w => w).length"></span> words
+                                    </span>
+                                    <span class="text-gray-500">
+                                        <span x-text="result?.formatted_content?.length || 0"></span> characters
+                                    </span>
+                                    <span class="text-gray-500">
+                                        ~<span x-text="Math.ceil((result?.formatted_content || '').split(/\s+/).filter(w => w).length / 150)"></span> min read time
+                                    </span>
+                                </div>
+                            </template>
+                            <!-- Thread metrics -->
+                            <span x-show="result?.content_type === 'thread'" class="text-gray-500">
+                                <span x-text="result?.formatted_content?.length || 0"></span> characters total
+                            </span>
+                        </div>
+                        <!-- Script length warnings -->
+                        <div x-show="result?.content_type === 'script'" class="mt-2">
+                            <!-- Too short warning -->
+                            <div x-show="(result?.formatted_content || '').split(/\s+/).filter(w => w).length < 100"
+                                 class="rounded-md bg-yellow-50 p-2 border border-yellow-200">
+                                <p class="text-xs text-yellow-700">
+                                    ⚠️ Script may be too short. Consider adding more dialogue for a fuller educational experience.
+                                </p>
+                            </div>
+                            <!-- Too long warning -->
+                            <div x-show="(result?.formatted_content || '').split(/\s+/).filter(w => w).length > 600"
+                                 class="rounded-md bg-yellow-50 p-2 border border-yellow-200">
+                                <p class="text-xs text-yellow-700">
+                                    ⚠️ Script is quite long (<span x-text="Math.ceil((result?.formatted_content || '').split(/\s+/).filter(w => w).length / 150)"></span>+ minutes). Consider splitting into multiple parts.
+                                </p>
+                            </div>
+                            <!-- Good length indicator -->
+                            <div x-show="(result?.formatted_content || '').split(/\s+/).filter(w => w).length >= 100 && (result?.formatted_content || '').split(/\s+/).filter(w => w).length <= 600"
+                                 class="rounded-md bg-green-50 p-2 border border-green-200">
+                                <p class="text-xs text-green-700">
+                                    ✓ Good script length for a <span x-text="Math.ceil((result?.formatted_content || '').split(/\s+/).filter(w => w).length / 150)"></span>-minute read.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Citations -->
@@ -195,6 +243,62 @@
                                     </template>
                                 </div>
                                 <button @click="duplicateWarning = null" class="mt-2 text-sm text-yellow-600 hover:text-yellow-800 underline">
+                                    Dismiss warning
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Safety Warning -->
+                    <div x-show="safetyWarning" class="rounded-md p-4 border"
+                         :class="{
+                             'bg-red-50 border-red-200': safetyWarning?.is_blocked,
+                             'bg-orange-50 border-orange-200': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                             'bg-yellow-50 border-yellow-200': safetyWarning?.level === 'caution'
+                         }">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
+                                     :class="{
+                                         'text-red-400': safetyWarning?.is_blocked,
+                                         'text-orange-400': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                                         'text-yellow-400': safetyWarning?.level === 'caution'
+                                     }">
+                                    <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <h3 class="text-sm font-medium"
+                                    :class="{
+                                        'text-red-800': safetyWarning?.is_blocked,
+                                        'text-orange-800': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                                        'text-yellow-800': safetyWarning?.level === 'caution'
+                                    }">
+                                    <span x-show="safetyWarning?.is_blocked">Content Blocked</span>
+                                    <span x-show="safetyWarning?.needs_review && !safetyWarning?.is_blocked">Review Required</span>
+                                    <span x-show="safetyWarning?.level === 'caution'">Content Advisory</span>
+                                </h3>
+                                <div class="mt-1 text-sm"
+                                     :class="{
+                                         'text-red-700': safetyWarning?.is_blocked,
+                                         'text-orange-700': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                                         'text-yellow-700': safetyWarning?.level === 'caution'
+                                     }">
+                                    <p x-show="safetyWarning?.blocked_reason" x-text="safetyWarning?.blocked_reason"></p>
+                                    <template x-if="safetyWarning?.concerns?.length > 0">
+                                        <ul class="mt-2 list-disc list-inside space-y-1">
+                                            <template x-for="concern in safetyWarning?.concerns" :key="concern">
+                                                <li x-text="concern"></li>
+                                            </template>
+                                        </ul>
+                                    </template>
+                                </div>
+                                <button @click="safetyWarning = null" class="mt-2 text-sm underline"
+                                        :class="{
+                                            'text-red-600 hover:text-red-800': safetyWarning?.is_blocked,
+                                            'text-orange-600 hover:text-orange-800': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                                            'text-yellow-600 hover:text-yellow-800': safetyWarning?.level === 'caution'
+                                        }">
                                     Dismiss warning
                                 </button>
                             </div>
@@ -278,6 +382,7 @@ function generateData() {
         suggestion: null,
         loadingSuggestion: false,
         duplicateWarning: null,
+        safetyWarning: null,
         draftSaved: false,
         draftLoaded: false,
 
@@ -344,6 +449,7 @@ function generateData() {
             this.generating = true;
             this.result = null;
             this.duplicateWarning = null;
+            this.safetyWarning = null;
 
             const payload = {
                 topic: this.mode === 'bot_proposed' ? 'Auto-generated topic' : this.topic,
@@ -368,8 +474,11 @@ function generateData() {
                     this.result = await response.json();
                     showToast('Content generated successfully', 'success');
 
-                    // Check for duplicates
-                    await this.checkDuplicates(this.result.formatted_content);
+                    // Check for duplicates and safety issues in parallel
+                    await Promise.all([
+                        this.checkDuplicates(this.result.formatted_content),
+                        this.checkSafety(this.result.formatted_content)
+                    ]);
                 } else {
                     const error = await response.json();
                     showToast(error.detail || 'Generation failed', 'error');
@@ -394,6 +503,24 @@ function generateData() {
                 }
             } catch (error) {
                 console.error('Failed to check duplicates:', error);
+            }
+        },
+
+        async checkSafety(content) {
+            try {
+                const response = await fetch('/api/generate/safety-check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.is_safe) {
+                        this.safetyWarning = data;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to check safety:', error);
             }
         },
 

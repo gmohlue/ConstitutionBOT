@@ -49,6 +49,34 @@ class ContentFilter:
         r"\bgenocide\b",
     ]
 
+    # Profanity word list (common English profanity)
+    PROFANITY_WORDS = {
+        # Mild profanity - caution level
+        "mild": [
+            "damn", "dammit", "hell", "crap", "ass", "piss",
+            "bloody", "bugger", "bollocks", "git", "sod",
+        ],
+        # Strong profanity - review required
+        "strong": [
+            "shit", "fuck", "fucking", "fucker", "fucked",
+            "bitch", "bastard", "asshole", "dickhead", "prick",
+            "cock", "cunt", "twat", "wanker", "bullshit",
+        ],
+        # Slurs - blocked (racial, ethnic, homophobic)
+        "slurs": [
+            "kaffir", "kaffer", "hotnot", "coolie", "boesman",
+            "nigger", "nigga", "faggot", "fag", "dyke", "tranny",
+            "retard", "spastic", "mong",
+        ],
+    }
+
+    # Derogatory terms specific to South African context
+    SA_SENSITIVE_TERMS = [
+        "makwerekwere", "amakwerekwere",  # xenophobic term
+        "swartgevaar",  # apartheid-era fear term
+        "rooi gevaar",  # apartheid-era term
+    ]
+
     # Sensitive topics requiring review
     SENSITIVE_TOPICS = {
         "death_penalty": ["death penalty", "capital punishment", "execution"],
@@ -103,6 +131,27 @@ class ContentFilter:
                 result.level = SafetyLevel.REVIEW_REQUIRED
                 result.concerns.append("Content appears to provide specific legal advice")
 
+        # Check profanity
+        profanity_result = self._check_profanity(content_lower)
+        if profanity_result["slurs"]:
+            result.level = SafetyLevel.BLOCKED
+            result.blocked_reason = "Content contains slurs or hate speech"
+            return result
+        if profanity_result["strong"]:
+            result.level = SafetyLevel.REVIEW_REQUIRED
+            result.concerns.append(f"Contains strong profanity: {', '.join(profanity_result['strong'][:3])}")
+        if profanity_result["mild"]:
+            if result.level == SafetyLevel.SAFE:
+                result.level = SafetyLevel.CAUTION
+            result.concerns.append(f"Contains mild profanity: {', '.join(profanity_result['mild'][:3])}")
+
+        # Check SA-specific sensitive terms
+        for term in self.SA_SENSITIVE_TERMS:
+            if term in content_lower:
+                result.level = SafetyLevel.BLOCKED
+                result.blocked_reason = "Content contains derogatory or xenophobic terms"
+                return result
+
         # Check sensitive topics
         for topic, keywords in self.SENSITIVE_TOPICS.items():
             for keyword in keywords:
@@ -154,6 +203,22 @@ class ContentFilter:
             "ruling party", "opposition",
         ]
         return any(term in content for term in political_terms)
+
+    def _check_profanity(self, content: str) -> dict[str, list[str]]:
+        """Check content for profanity words.
+
+        Returns dict with lists of found words by severity level.
+        """
+        result = {"mild": [], "strong": [], "slurs": []}
+        words = re.findall(r'\b\w+\b', content.lower())
+        word_set = set(words)
+
+        for level, word_list in self.PROFANITY_WORDS.items():
+            for word in word_list:
+                if word in word_set:
+                    result[level].append(word)
+
+        return result
 
     def sanitize(self, content: str) -> str:
         """Sanitize content by removing problematic elements."""
