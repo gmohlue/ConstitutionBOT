@@ -1,0 +1,11 @@
+/*
+ * Tailwind CSS is loaded via CDN in the base template.
+ * This file is a placeholder for custom styles if needed.
+ *
+ * To use a compiled Tailwind CSS instead of CDN:
+ * 1. Install Tailwind CSS CLI: npm install -D tailwindcss
+ * 2. Initialize: npx tailwindcss init
+ * 3. Build: npx tailwindcss -i ./src/input.css -o ./tailwind.css --watch
+ */
+
+/* Custom styles can be added here */

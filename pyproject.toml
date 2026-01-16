@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "constitutionbot"
+version = "0.1.0"
+description = "Civic Education Assistant for the South African Constitution (1996)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "ConstitutionBOT Team" }
+]
+dependencies = [
+    # Core
+    "anthropic>=0.76.0",
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+
+    # Web/Dashboard
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
+    "jinja2>=3.1.0",
+
+    # Database
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.19.0",
+
+    # Twitter
+    "tweepy>=4.14.0",
+
+    # Document Processing
+    "pymupdf>=1.23.0",
+
+    # Scheduling
+    "apscheduler>=3.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.27.0",
+    "ruff>=0.2.0",
+]
+
+[project.scripts]
+constitutionbot = "constitutionbot.cli.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/constitutionbot"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Content - ConstitutionBOT Admin{% endblock %}
+{% block page_title %}Generate Content{% endblock %}
+
+{% block content %}
+<div x-data="generateData()">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Generation Form -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-base font-semibold leading-6 text-gray-900">Create Educational Content</h3>
+                <p class="mt-1 text-sm text-gray-500">Generate tweets, threads, or content about the SA Constitution</p>
+
+                <div class="mt-6 space-y-4">
+                    <!-- Mode Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Generation Mode</label>
+                        <select x-model="mode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="user_provided">User Provided Topic</option>
+                            <option value="bot_proposed">Bot Suggested Topic</option>
+                            <option value="historical">Historical Event</option>
+                        </select>
+                    </div>
+
+                    <!-- Topic Input (for user_provided and historical) -->
+                    <div x-show="mode !== 'bot_proposed'">
+                        <label class="block text-sm font-medium text-gray-700">
+                            <span x-show="mode === 'user_provided'">Topic</span>
+                            <span x-show="mode === 'historical'">Historical Event</span>
+                        </label>
+                        <input type="text" x-model="topic" placeholder="e.g., Right to equality, Freedom of expression..."
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                    </div>
+
+                    <!-- Content Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Content Type</label>
+                        <div class="mt-2 flex space-x-4">
+                            <label class="flex items-center">
+                                <input type="radio" x-model="contentType" value="tweet" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
+                                <span class="ml-2 text-sm text-gray-700">Single Tweet</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" x-model="contentType" value="thread" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
+                                <span class="ml-2 text-sm text-gray-700">Thread</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Thread Options -->
+                    <div x-show="contentType === 'thread'">
+                        <label class="block text-sm font-medium text-gray-700">Number of Tweets</label>
+                        <input type="number" x-model="numTweets" min="2" max="10"
+                               class="mt-1 block w-24 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                    </div>
+
+                    <!-- Specific Sections (optional) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Specific Sections (optional)</label>
+                        <input type="text" x-model="sectionNums" placeholder="e.g., 9, 10, 11"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                        <p class="mt-1 text-xs text-gray-500">Comma-separated section numbers to reference</p>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="pt-4">
+                        <button @click="generate()" :disabled="generating || (mode !== 'bot_proposed' && !topic)"
+                                class="w-full inline-flex justify-center items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg x-show="generating" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="generating ? 'Generating...' : 'Generate Content'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-base font-semibold leading-6 text-gray-900">Preview</h3>
+
+                <!-- Empty State -->
+                <div x-show="!result && !generating" class="text-center py-12">
+                    <span class="text-4xl">✨</span>
+                    <p class="mt-2 text-sm text-gray-500">Generated content will appear here</p>
+                </div>
+
+                <!-- Loading State -->
+                <div x-show="generating" class="text-center py-12">
+                    <svg class="animate-spin h-8 w-8 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500">Generating content with AI...</p>
+                </div>
+
+                <!-- Result -->
+                <div x-show="result" class="mt-4 space-y-4">
+                    <!-- Topic -->
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Topic</p>
+                        <p class="text-sm text-gray-900" x-text="result?.topic"></p>
+                    </div>
+
+                    <!-- Content -->
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Content</p>
+                        <div class="mt-2 p-3 bg-gray-50 rounded-md">
+                            <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="result?.formatted_content"></p>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">
+                            <span x-text="result?.formatted_content?.length || 0"></span> characters
+                        </p>
+                    </div>
+
+                    <!-- Citations -->
+                    <div x-show="result?.citations?.length > 0">
+                        <p class="text-sm font-medium text-gray-500">Citations</p>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            <template x-for="citation in result?.citations" :key="citation.section_num">
+                                <span class="inline-flex items-center rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                                    Section <span x-text="citation.section_num"></span>
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Validation -->
+                    <div x-show="result?.validation_warnings?.length > 0 || result?.validation_errors?.length > 0">
+                        <p class="text-sm font-medium text-gray-500">Validation</p>
+                        <template x-for="error in result?.validation_errors">
+                            <p class="text-sm text-red-600">⚠️ <span x-text="error"></span></p>
+                        </template>
+                        <template x-for="warning in result?.validation_warnings">
+                            <p class="text-sm text-yellow-600">⚡ <span x-text="warning"></span></p>
+                        </template>
+                    </div>
+
+                    <!-- Status -->
+                    <div x-show="result?.queue_id" class="rounded-md bg-green-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-green-800">Added to queue</p>
+                                <p class="text-sm text-green-700">Queue ID: <span x-text="result?.queue_id"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex space-x-2 pt-4">
+                        <button @click="generate()" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                            Regenerate
+                        </button>
+                        <a :href="'/queue'" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                            View in Queue
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topic Suggestions -->
+    <div class="mt-8 bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold leading-6 text-gray-900">Topic Suggestions</h3>
+                <button @click="getSuggestion()" :disabled="loadingSuggestion"
+                        class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50">
+                    <svg x-show="loadingSuggestion" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Get Suggestion
+                </button>
+            </div>
+
+            <div x-show="suggestion" class="mt-4 p-4 bg-gray-50 rounded-md">
+                <p class="text-sm font-medium text-gray-900" x-text="suggestion?.topic"></p>
+                <p class="mt-1 text-sm text-gray-500" x-text="suggestion?.angle"></p>
+                <p class="mt-1 text-sm text-gray-500" x-text="suggestion?.reason"></p>
+                <div class="mt-2 flex flex-wrap gap-1">
+                    <template x-for="num in suggestion?.section_nums" :key="num">
+                        <span class="inline-flex items-center rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                            Section <span x-text="num"></span>
+                        </span>
+                    </template>
+                </div>
+                <button @click="useSuggestion()" class="mt-4 inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                    Use This Topic
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateData() {
+    return {
+        mode: 'user_provided',
+        topic: '',
+        contentType: 'tweet',
+        numTweets: 5,
+        sectionNums: '',
+        generating: false,
+        result: null,
+        suggestion: null,
+        loadingSuggestion: false,
+
+        async generate() {
+            this.generating = true;
+            this.result = null;
+
+            const payload = {
+                topic: this.mode === 'bot_proposed' ? 'Auto-generated topic' : this.topic,
+                content_type: this.contentType,
+                num_tweets: parseInt(this.numTweets),
+                mode: this.mode
+            };
+
+            if (this.sectionNums) {
+                payload.section_nums = this.sectionNums.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+            }
+
+            try {
+                const response = await fetch('/api/generate/topic?add_to_queue=true', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    this.result = await response.json();
+                    showToast('Content generated successfully', 'success');
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Generation failed', 'error');
+                }
+            } catch (error) {
+                showToast('Generation failed', 'error');
+            }
+
+            this.generating = false;
+        },
+
+        async getSuggestion() {
+            this.loadingSuggestion = true;
+            try {
+                const response = await fetch('/api/generate/suggest', { method: 'POST' });
+                if (response.ok) {
+                    this.suggestion = await response.json();
+                } else {
+                    showToast('Failed to get suggestion', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to get suggestion', 'error');
+            }
+            this.loadingSuggestion = false;
+        },
+
+        useSuggestion() {
+            if (this.suggestion) {
+                this.mode = 'user_provided';
+                this.topic = this.suggestion.topic;
+                this.sectionNums = this.suggestion.section_nums.join(', ');
+                this.suggestion = null;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}
