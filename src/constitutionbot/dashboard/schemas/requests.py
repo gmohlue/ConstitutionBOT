@@ -30,8 +30,9 @@ class ContentGenerateRequest(BaseModel):
     """Generate new content."""
 
     topic: str = Field(..., min_length=1, description="Topic for content generation")
-    content_type: str = Field(default="tweet", pattern="^(tweet|thread)$")
+    content_type: str = Field(default="tweet", pattern="^(tweet|thread|script)$")
     num_tweets: int = Field(default=5, ge=2, le=10, description="Number of tweets for threads")
+    duration: str = Field(default="2-3 minutes", description="Duration for dialog scripts")
     section_nums: Optional[list[int]] = Field(
         default=None, description="Specific section numbers to reference"
     )

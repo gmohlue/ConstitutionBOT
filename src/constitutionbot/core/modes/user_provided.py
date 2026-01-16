@@ -68,6 +68,29 @@ class UserProvidedMode:
             section_nums=section_nums,
         )
 
+    async def generate_script(
+        self,
+        topic: str,
+        duration: str = "2-3 minutes",
+        section_nums: Optional[list[int]] = None,
+    ) -> GeneratedContent:
+        """Generate a dialog script about a user-provided topic.
+
+        Args:
+            topic: The topic to create content about
+            duration: Estimated duration of the script
+            section_nums: Optional specific sections to reference
+
+        Returns:
+            GeneratedContent with the generated dialog script
+        """
+        return await self.generator.generate_script(
+            topic=topic,
+            mode="user_provided",
+            section_nums=section_nums,
+            duration=duration,
+        )
+
     async def explain_section(
         self,
         section_num: int,

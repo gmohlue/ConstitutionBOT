@@ -36,7 +36,7 @@
                     <!-- Content Type -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Content Type</label>
-                        <div class="mt-2 flex space-x-4">
+                        <div class="mt-2 flex flex-wrap gap-4">
                             <label class="flex items-center">
                                 <input type="radio" x-model="contentType" value="tweet" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
                                 <span class="ml-2 text-sm text-gray-700">Single Tweet</span>
@@ -44,6 +44,10 @@
                             <label class="flex items-center">
                                 <input type="radio" x-model="contentType" value="thread" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
                                 <span class="ml-2 text-sm text-gray-700">Thread</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" x-model="contentType" value="script" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
+                                <span class="ml-2 text-sm text-gray-700">Dialog Script</span>
                             </label>
                         </div>
                     </div>
@@ -53,6 +57,17 @@
                         <label class="block text-sm font-medium text-gray-700">Number of Tweets</label>
                         <input type="number" x-model="numTweets" min="2" max="10"
                                class="mt-1 block w-24 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                    </div>
+
+                    <!-- Script Options -->
+                    <div x-show="contentType === 'script'">
+                        <label class="block text-sm font-medium text-gray-700">Script Duration</label>
+                        <select x-model="scriptDuration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="1-2 minutes">Short (1-2 minutes)</option>
+                            <option value="2-3 minutes">Medium (2-3 minutes)</option>
+                            <option value="3-5 minutes">Long (3-5 minutes)</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Dialog scripts are conversations between characters explaining constitutional topics</p>
                     </div>
 
                     <!-- Specific Sections (optional) -->
@@ -210,6 +225,7 @@ function generateData() {
         topic: '',
         contentType: 'tweet',
         numTweets: 5,
+        scriptDuration: '2-3 minutes',
         sectionNums: '',
         generating: false,
         result: null,
@@ -224,6 +240,7 @@ function generateData() {
                 topic: this.mode === 'bot_proposed' ? 'Auto-generated topic' : this.topic,
                 content_type: this.contentType,
                 num_tweets: parseInt(this.numTweets),
+                duration: this.scriptDuration,
                 mode: this.mode
             };
 

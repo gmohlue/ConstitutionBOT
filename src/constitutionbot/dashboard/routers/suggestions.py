@@ -88,6 +88,12 @@ async def generate_content(
                 num_tweets=request.num_tweets,
                 section_nums=request.section_nums,
             )
+        elif request.content_type == "script":
+            content = await mode.generate_script(
+                topic=request.topic,
+                duration=request.duration,
+                section_nums=request.section_nums,
+            )
         else:
             content = await mode.generate_tweet(
                 topic=request.topic,

@@ -137,6 +137,38 @@ Create an explanation that:
 Format: {format_type}
 Maximum length: {max_length}"""
 
+    DIALOG_SCRIPT_PROMPT = """Create an educational dialog script about the South African Constitution.
+
+Topic: {topic}
+
+Relevant Constitutional Text:
+{context}
+
+Requirements:
+- Write a natural conversation between 2-3 characters
+- Characters should represent diverse South African perspectives
+- One character can ask questions, others explain
+- Include specific section citations naturally in the dialog
+- Make it educational but engaging and conversational
+- Aim for {duration} of spoken content
+- Include stage directions in [brackets] where helpful
+- End with a clear educational takeaway
+
+Suggested characters:
+- A curious citizen asking questions
+- A knowledgeable friend, teacher, or community leader explaining
+- Optionally, a third voice adding practical examples
+
+Format your response as:
+TITLE: [Script title]
+CHARACTERS: [List of characters with brief descriptions]
+---
+[Character Name]: [Dialog]
+[Character Name]: [Dialog]
+...
+---
+TAKEAWAY: [Key lesson from the script]"""
+
     @classmethod
     def get_tweet_prompt(
         cls,
@@ -205,4 +237,18 @@ Maximum length: {max_length}"""
             section_text=section_text,
             format_type=format_type,
             max_length=max_length,
+        )
+
+    @classmethod
+    def get_script_prompt(
+        cls,
+        topic: str,
+        context: str,
+        duration: str = "2-3 minutes",
+    ) -> str:
+        """Get formatted dialog script generation prompt."""
+        return cls.DIALOG_SCRIPT_PROMPT.format(
+            topic=topic,
+            context=context,
+            duration=duration,
         )

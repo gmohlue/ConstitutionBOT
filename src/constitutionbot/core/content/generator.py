@@ -208,6 +208,57 @@ class ContentGenerator:
             mode=mode,
         )
 
+    async def generate_script(
+        self,
+        topic: str,
+        mode: str = "user_provided",
+        section_nums: Optional[list[int]] = None,
+        duration: str = "2-3 minutes",
+    ) -> GeneratedContent:
+        """Generate a dialog script for educational content."""
+        # Get relevant sections
+        if section_nums:
+            sections = []
+            for num in section_nums:
+                section = await self.retriever.get_section(num)
+                if section:
+                    sections.append(section)
+        else:
+            sections = await self.retriever.get_sections_for_topic(topic, limit=5)
+
+        # Format context
+        context = await self.retriever.format_multiple_sections(sections) if sections else ""
+
+        # Generate content
+        prompt = PromptTemplates.get_script_prompt(
+            topic=topic,
+            context=context,
+            duration=duration,
+        )
+        raw_content = self.claude.generate(
+            prompt=prompt,
+            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            temperature=0.7,
+            max_tokens=3000,
+        )
+
+        # Parse and format
+        script = self.formatter.parse_script(raw_content, title=topic)
+        formatted = raw_content  # Store the full script as-is
+
+        # Build citations
+        citations = self._build_citations(sections)
+
+        return GeneratedContent(
+            content_type="script",
+            raw_content=raw_content,
+            formatted_content=formatted,
+            topic=topic,
+            citations=citations,
+            validation=None,  # Scripts don't have character limits
+            mode=mode,
+        )
+
     async def generate_reply(
         self,
         mention_text: str,
