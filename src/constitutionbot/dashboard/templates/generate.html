@@ -4,13 +4,30 @@
 {% block page_title %}Generate Content{% endblock %}
 
 {% block content %}
-<div x-data="generateData()">
+<div x-data="generateData()" x-init="init()">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <!-- Generation Form -->
         <div class="bg-white shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
-                <h3 class="text-base font-semibold leading-6 text-gray-900">Create Educational Content</h3>
-                <p class="mt-1 text-sm text-gray-500">Generate tweets, threads, or content about the SA Constitution</p>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold leading-6 text-gray-900">Create Educational Content</h3>
+                        <p class="mt-1 text-sm text-gray-500">Generate tweets, threads, or content about the SA Constitution</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <!-- Draft status indicator -->
+                        <span x-show="draftSaved" x-cloak class="text-xs text-green-600 flex items-center">
+                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Saved
+                        </span>
+                        <button x-show="draftLoaded || topic || sectionNums" @click="clearDraft(); topic=''; sectionNums=''"
+                                class="text-xs text-gray-500 hover:text-gray-700">
+                            Clear draft
+                        </button>
+                    </div>
+                </div>
 
                 <div class="mt-6 space-y-4">
                     <!-- Mode Selection -->
@@ -155,6 +172,35 @@
                         </template>
                     </div>
 
+                    <!-- Duplicate Warning -->
+                    <div x-show="duplicateWarning" class="rounded-md bg-yellow-50 p-4 border border-yellow-200">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <h3 class="text-sm font-medium text-yellow-800">Similar content found</h3>
+                                <p class="mt-1 text-sm text-yellow-700" x-text="duplicateWarning?.message"></p>
+                                <div class="mt-2 space-y-2">
+                                    <template x-for="item in duplicateWarning?.similar_items" :key="item.id">
+                                        <div class="text-xs bg-yellow-100 rounded p-2">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span class="font-medium text-yellow-800" x-text="item.topic || 'Untitled'"></span>
+                                                <span class="text-yellow-600" x-text="Math.round(item.similarity_score * 100) + '% similar'"></span>
+                                            </div>
+                                            <p class="text-yellow-700 line-clamp-2" x-text="item.formatted_content"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                                <button @click="duplicateWarning = null" class="mt-2 text-sm text-yellow-600 hover:text-yellow-800 underline">
+                                    Dismiss warning
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Status -->
                     <div x-show="result?.queue_id" class="rounded-md bg-green-50 p-4">
                         <div class="flex">
@@ -231,10 +277,73 @@ function generateData() {
         result: null,
         suggestion: null,
         loadingSuggestion: false,
+        duplicateWarning: null,
+        draftSaved: false,
+        draftLoaded: false,
+
+        init() {
+            // Load draft from localStorage
+            this.loadDraft();
+
+            // Auto-save draft every 5 seconds when there are changes
+            setInterval(() => this.saveDraft(), 5000);
+
+            // Save draft when leaving page
+            window.addEventListener('beforeunload', () => this.saveDraft());
+        },
+
+        loadDraft() {
+            try {
+                const draft = localStorage.getItem('constitutionbot_draft');
+                if (draft) {
+                    const data = JSON.parse(draft);
+                    if (data.topic || data.sectionNums) {
+                        this.mode = data.mode || 'user_provided';
+                        this.topic = data.topic || '';
+                        this.contentType = data.contentType || 'tweet';
+                        this.numTweets = data.numTweets || 5;
+                        this.scriptDuration = data.scriptDuration || '2-3 minutes';
+                        this.sectionNums = data.sectionNums || '';
+                        this.draftLoaded = true;
+                        showToast('Draft restored', 'info');
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load draft:', e);
+            }
+        },
+
+        saveDraft() {
+            if (!this.topic && !this.sectionNums) return;
+
+            try {
+                const draft = {
+                    mode: this.mode,
+                    topic: this.topic,
+                    contentType: this.contentType,
+                    numTweets: this.numTweets,
+                    scriptDuration: this.scriptDuration,
+                    sectionNums: this.sectionNums,
+                    savedAt: new Date().toISOString()
+                };
+                localStorage.setItem('constitutionbot_draft', JSON.stringify(draft));
+                this.draftSaved = true;
+                setTimeout(() => this.draftSaved = false, 2000);
+            } catch (e) {
+                console.error('Failed to save draft:', e);
+            }
+        },
+
+        clearDraft() {
+            localStorage.removeItem('constitutionbot_draft');
+            this.draftLoaded = false;
+            showToast('Draft cleared', 'info');
+        },
 
         async generate() {
             this.generating = true;
             this.result = null;
+            this.duplicateWarning = null;
 
             const payload = {
                 topic: this.mode === 'bot_proposed' ? 'Auto-generated topic' : this.topic,
@@ -258,6 +367,9 @@ function generateData() {
                 if (response.ok) {
                     this.result = await response.json();
                     showToast('Content generated successfully', 'success');
+
+                    // Check for duplicates
+                    await this.checkDuplicates(this.result.formatted_content);
                 } else {
                     const error = await response.json();
                     showToast(error.detail || 'Generation failed', 'error');
@@ -267,6 +379,22 @@ function generateData() {
             }
 
             this.generating = false;
+        },
+
+        async checkDuplicates(content) {
+            try {
+                const response = await fetch(`/api/queue/check-duplicates?content=${encodeURIComponent(content)}&threshold=0.4`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.has_duplicates && data.similar_items.length > 0) {
+                        this.duplicateWarning = data;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to check duplicates:', error);
+            }
         },
 
         async getSuggestion() {

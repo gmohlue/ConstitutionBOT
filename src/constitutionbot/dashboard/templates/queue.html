@@ -4,7 +4,7 @@
 {% block page_title %}Content Queue{% endblock %}
 
 {% block content %}
-<div x-data="queueData()" x-init="loadQueue()">
+<div x-data="{ ...queueData(), showPreview: false }" x-init="loadQueue()">
     <!-- Header with filters -->
     <div class="sm:flex sm:items-center sm:justify-between">
         <div>
@@ -17,22 +17,104 @@
         </div>
     </div>
 
+    <!-- Search and Filter -->
+    <div class="mt-4 flex flex-col sm:flex-row gap-4">
+        <!-- Search box -->
+        <div class="relative flex-1">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <input type="text"
+                   x-model="searchQuery"
+                   @input="clearSelection()"
+                   placeholder="Search by topic or content..."
+                   class="block w-full rounded-md border-0 py-2 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-600 sm:text-sm sm:leading-6">
+            <button x-show="searchQuery" @click="searchQuery = ''"
+                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <!-- Content type filter -->
+        <select x-model="contentTypeFilter" @change="clearSelection()"
+                class="rounded-md border-0 py-2 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-green-600 sm:text-sm">
+            <option value="">All types</option>
+            <option value="tweet">Tweet</option>
+            <option value="thread">Thread</option>
+            <option value="script">Script</option>
+        </select>
+    </div>
+
     <!-- Filter tabs -->
     <div class="mt-4 border-b border-gray-200">
         <nav class="-mb-px flex space-x-8">
-            <button @click="filter = 'pending'" :class="filter === 'pending' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+            <button @click="filter = 'pending'; clearSelection()" :class="filter === 'pending' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Pending <span class="ml-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600" x-text="counts.pending"></span>
             </button>
-            <button @click="filter = 'approved'" :class="filter === 'approved' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+            <button @click="filter = 'approved'; clearSelection()" :class="filter === 'approved' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Approved <span class="ml-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600" x-text="counts.approved"></span>
             </button>
-            <button @click="filter = 'scheduled'" :class="filter === 'scheduled' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+            <button @click="filter = 'scheduled'; clearSelection()" :class="filter === 'scheduled' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 Scheduled <span class="ml-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600" x-text="counts.scheduled"></span>
             </button>
-            <button @click="filter = null" :class="filter === null ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+            <button @click="filter = null; clearSelection()" :class="filter === null ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
                 All
             </button>
         </nav>
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    <div x-show="selectedItems.length > 0" x-cloak
+         class="mt-4 flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+        <div class="flex items-center space-x-3">
+            <span class="text-sm font-medium text-green-800">
+                <span x-text="selectedItems.length"></span> item(s) selected
+            </span>
+            <button @click="clearSelection()" class="text-sm text-green-600 hover:text-green-800 underline">
+                Clear selection
+            </button>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button x-show="filter === 'pending'"
+                    @click="bulkApprove()"
+                    class="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                Approve All
+            </button>
+            <button x-show="filter === 'pending'"
+                    @click="bulkReject()"
+                    class="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Reject All
+            </button>
+            <button @click="bulkDelete()"
+                    class="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+                Delete All
+            </button>
+        </div>
+    </div>
+
+    <!-- Select All Row -->
+    <div x-show="!loading && filteredItems.length > 0" class="mt-4 flex items-center space-x-3 text-sm text-gray-600">
+        <label class="flex items-center cursor-pointer">
+            <input type="checkbox"
+                   :checked="allSelected"
+                   @change="toggleSelectAll()"
+                   class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
+            <span class="ml-2">Select all</span>
+        </label>
+        <span class="text-gray-400">|</span>
+        <span x-text="filteredItems.length + ' items'"></span>
     </div>
 
     <!-- Queue list -->
@@ -61,9 +143,17 @@
         </template>
 
         <template x-for="item in filteredItems" :key="item.id">
-            <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="bg-white shadow rounded-lg overflow-hidden"
+                 :class="{ 'ring-2 ring-green-500': isSelected(item.id) }">
                 <div class="px-4 py-5 sm:p-6">
                     <div class="flex items-start justify-between">
+                        <!-- Checkbox -->
+                        <div class="flex items-start mr-4">
+                            <input type="checkbox"
+                                   :checked="isSelected(item.id)"
+                                   @change="toggleSelect(item.id)"
+                                   class="mt-1 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer">
+                        </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center space-x-2">
                                 <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
@@ -117,6 +207,13 @@
                             Created <span x-text="formatDate(item.created_at)"></span>
                         </p>
                         <div class="flex space-x-2" x-show="item.status === 'pending'">
+                            <button @click="showTwitterPreview(item.formatted_content, item.topic)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Preview
+                            </button>
                             <button @click="editItem(item)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
                                 Edit
                             </button>
@@ -128,6 +225,13 @@
                             </button>
                         </div>
                         <div class="flex space-x-2" x-show="item.status === 'approved'">
+                            <button @click="showTwitterPreview(item.formatted_content, item.topic)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Preview
+                            </button>
                             <button @click="openScheduleModal(item)" class="inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500">
                                 <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
@@ -139,6 +243,13 @@
                             </button>
                         </div>
                         <div class="flex space-x-2" x-show="item.status === 'scheduled'">
+                            <button @click="showTwitterPreview(item.formatted_content, item.topic)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Preview
+                            </button>
                             <button @click="openScheduleModal(item)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
                                 Reschedule
                             </button>
@@ -249,6 +360,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Twitter Preview Modal -->
+    {% include "partials/twitter_preview.html" %}
 </div>
 
 <script>
@@ -263,10 +377,41 @@ function queueData() {
         scheduleDate: '',
         scheduleTime: '09:00',
         scheduleAutoPost: false,
+        // Bulk selection state
+        selectedItems: [],
+        // Search and filter state
+        searchQuery: '',
+        contentTypeFilter: '',
 
         get filteredItems() {
-            if (!this.filter) return this.items;
-            return this.items.filter(item => item.status === this.filter);
+            let items = this.items;
+
+            // Filter by status
+            if (this.filter) {
+                items = items.filter(item => item.status === this.filter);
+            }
+
+            // Filter by content type
+            if (this.contentTypeFilter) {
+                items = items.filter(item => item.content_type === this.contentTypeFilter);
+            }
+
+            // Filter by search query
+            if (this.searchQuery.trim()) {
+                const query = this.searchQuery.toLowerCase().trim();
+                items = items.filter(item => {
+                    const topic = (item.topic || '').toLowerCase();
+                    const content = (item.formatted_content || '').toLowerCase();
+                    return topic.includes(query) || content.includes(query);
+                });
+            }
+
+            return items;
+        },
+
+        get allSelected() {
+            return this.filteredItems.length > 0 &&
+                   this.filteredItems.every(item => this.selectedItems.includes(item.id));
         },
 
         async loadQueue() {
@@ -429,6 +574,127 @@ function queueData() {
                 }
             } catch (error) {
                 showToast('Failed to unschedule', 'error');
+            }
+        },
+
+        // Selection methods
+        isSelected(id) {
+            return this.selectedItems.includes(id);
+        },
+
+        toggleSelect(id) {
+            if (this.isSelected(id)) {
+                this.selectedItems = this.selectedItems.filter(i => i !== id);
+            } else {
+                this.selectedItems.push(id);
+            }
+        },
+
+        toggleSelectAll() {
+            if (this.allSelected) {
+                // Deselect all filtered items
+                this.selectedItems = this.selectedItems.filter(
+                    id => !this.filteredItems.map(i => i.id).includes(id)
+                );
+            } else {
+                // Select all filtered items
+                const filteredIds = this.filteredItems.map(i => i.id);
+                this.selectedItems = [...new Set([...this.selectedItems, ...filteredIds])];
+            }
+        },
+
+        clearSelection() {
+            this.selectedItems = [];
+        },
+
+        // Bulk actions
+        async bulkApprove() {
+            if (this.selectedItems.length === 0) return;
+            if (!confirm(`Approve ${this.selectedItems.length} item(s)?`)) return;
+
+            let success = 0;
+            let failed = 0;
+
+            for (const id of this.selectedItems) {
+                try {
+                    const response = await fetch(`/api/queue/${id}/approve`, { method: 'POST' });
+                    if (response.ok) {
+                        success++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    failed++;
+                }
+            }
+
+            this.selectedItems = [];
+            await this.loadQueue();
+
+            if (failed === 0) {
+                showToast(`Approved ${success} item(s)`, 'success');
+            } else {
+                showToast(`Approved ${success}, failed ${failed}`, 'warning');
+            }
+        },
+
+        async bulkReject() {
+            if (this.selectedItems.length === 0) return;
+            if (!confirm(`Reject ${this.selectedItems.length} item(s)?`)) return;
+
+            let success = 0;
+            let failed = 0;
+
+            for (const id of this.selectedItems) {
+                try {
+                    const response = await fetch(`/api/queue/${id}/reject`, { method: 'POST' });
+                    if (response.ok) {
+                        success++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    failed++;
+                }
+            }
+
+            this.selectedItems = [];
+            await this.loadQueue();
+
+            if (failed === 0) {
+                showToast(`Rejected ${success} item(s)`, 'success');
+            } else {
+                showToast(`Rejected ${success}, failed ${failed}`, 'warning');
+            }
+        },
+
+        async bulkDelete() {
+            if (this.selectedItems.length === 0) return;
+            if (!confirm(`Delete ${this.selectedItems.length} item(s)? This cannot be undone.`)) return;
+
+            let success = 0;
+            let failed = 0;
+
+            for (const id of this.selectedItems) {
+                try {
+                    const response = await fetch(`/api/queue/${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        success++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    failed++;
+                }
+            }
+
+            this.selectedItems = [];
+            await this.loadQueue();
+
+            if (failed === 0) {
+                showToast(`Deleted ${success} item(s)`, 'success');
+            } else {
+                showToast(`Deleted ${success}, failed ${failed}`, 'warning');
             }
         },
 

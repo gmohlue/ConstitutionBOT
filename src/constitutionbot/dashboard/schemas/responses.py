@@ -208,3 +208,25 @@ class MessageResponse(BaseModel):
     success: bool
     message: str
     data: Optional[Any] = None
+
+
+class SimilarContentItem(BaseModel):
+    """Similar content item for duplicate detection."""
+
+    id: int
+    topic: Optional[str]
+    formatted_content: str
+    similarity_score: float
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DuplicateCheckResponse(BaseModel):
+    """Duplicate check response."""
+
+    has_duplicates: bool
+    similar_items: list[SimilarContentItem] = Field(default_factory=list)
+    message: str

@@ -11,7 +11,9 @@ from constitutionbot.dashboard.schemas.requests import (
 from constitutionbot.dashboard.schemas.responses import (
     ContentQueueListResponse,
     ContentQueueResponse,
+    DuplicateCheckResponse,
     MessageResponse,
+    SimilarContentItem,
 )
 from constitutionbot.database import get_session
 from constitutionbot.database.models import ContentStatus
@@ -170,3 +172,47 @@ async def delete_item(
         )
 
     return MessageResponse(success=True, message="Item deleted successfully")
+
+
+@router.post("/check-duplicates", response_model=DuplicateCheckResponse)
+async def check_duplicates(
+    content: str,
+    threshold: float = 0.5,
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Check if content is similar to existing queue items.
+
+    Args:
+        content: The content to check for duplicates
+        threshold: Similarity threshold (0-1), default 0.5
+    """
+    repo = ContentQueueRepository(session)
+
+    similar = await repo.find_similar(content, threshold=threshold, limit=5)
+
+    similar_items = []
+    for item, score in similar:
+        similar_items.append(
+            SimilarContentItem(
+                id=item.id,
+                topic=item.topic,
+                formatted_content=item.formatted_content,
+                similarity_score=round(score, 2),
+                status=item.status,
+                created_at=item.created_at,
+            )
+        )
+
+    has_duplicates = len(similar_items) > 0
+    message = (
+        f"Found {len(similar_items)} similar item(s) in queue"
+        if has_duplicates
+        else "No similar content found"
+    )
+
+    return DuplicateCheckResponse(
+        has_duplicates=has_duplicates,
+        similar_items=similar_items,
+        message=message,
+    )

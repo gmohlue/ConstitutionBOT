@@ -193,3 +193,101 @@ class ContentQueueRepository:
         )
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def find_similar(
+        self,
+        content: str,
+        threshold: float = 0.6,
+        limit: int = 5,
+    ) -> list[tuple[ContentQueue, float]]:
+        """Find content items similar to the given content.
+
+        Uses word overlap (Jaccard similarity) to find similar content.
+
+        Args:
+            content: The content to compare against
+            threshold: Minimum similarity score (0-1) to include
+            limit: Maximum number of results
+
+        Returns:
+            List of (item, similarity_score) tuples, sorted by similarity
+        """
+        # Get all recent content (not rejected)
+        query = (
+            select(ContentQueue)
+            .where(ContentQueue.status != ContentStatus.REJECTED.value)
+            .order_by(ContentQueue.created_at.desc())
+            .limit(200)  # Check last 200 items
+        )
+        result = await self.session.execute(query)
+        items = list(result.scalars().all())
+
+        # Calculate similarity for each item
+        similar = []
+        content_words = set(content.lower().split())
+
+        for item in items:
+            item_words = set(item.formatted_content.lower().split())
+
+            # Jaccard similarity
+            if not content_words or not item_words:
+                continue
+
+            intersection = len(content_words & item_words)
+            union = len(content_words | item_words)
+            similarity = intersection / union if union > 0 else 0
+
+            if similarity >= threshold:
+                similar.append((item, similarity))
+
+        # Sort by similarity (highest first) and limit
+        similar.sort(key=lambda x: x[1], reverse=True)
+        return similar[:limit]
+
+    async def check_duplicate_topic(
+        self,
+        topic: str,
+        days_back: int = 30,
+    ) -> list[ContentQueue]:
+        """Check if a topic has been recently covered.
+
+        Args:
+            topic: The topic to check
+            days_back: Number of days to look back
+
+        Returns:
+            List of items with similar topics
+        """
+        from datetime import timedelta
+
+        cutoff = datetime.utcnow() - timedelta(days=days_back)
+        topic_lower = topic.lower()
+
+        # Get recent items
+        query = (
+            select(ContentQueue)
+            .where(ContentQueue.created_at >= cutoff)
+            .where(ContentQueue.status != ContentStatus.REJECTED.value)
+            .where(ContentQueue.topic.isnot(None))
+            .order_by(ContentQueue.created_at.desc())
+        )
+        result = await self.session.execute(query)
+        items = list(result.scalars().all())
+
+        # Find items with similar topics (simple substring matching)
+        similar = []
+        topic_words = set(topic_lower.split())
+
+        for item in items:
+            if not item.topic:
+                continue
+
+            item_topic_lower = item.topic.lower()
+            item_words = set(item_topic_lower.split())
+
+            # Check for significant word overlap
+            overlap = len(topic_words & item_words)
+            if overlap >= min(2, len(topic_words)):  # At least 2 words in common
+                similar.append(item)
+
+        return similar
