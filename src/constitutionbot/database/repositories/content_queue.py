@@ -23,6 +23,7 @@ class ContentQueueRepository:
         mode: str = "bot_proposed",
         topic: Optional[str] = None,
         citations: Optional[dict] = None,
+        language: str = "en",
     ) -> ContentQueue:
         """Create a new content queue item."""
         item = ContentQueue(
@@ -32,6 +33,7 @@ class ContentQueueRepository:
             mode=mode,
             topic=topic,
             citations=citations,
+            language=language,
             status=ContentStatus.PENDING.value,
         )
         self.session.add(item)

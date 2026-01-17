@@ -114,6 +114,7 @@ async def generate_content(
             mode=content.mode,
             topic=content.topic,
             citations=content.citations,
+            language=request.language,
         )
         queue_id = item.id
 
