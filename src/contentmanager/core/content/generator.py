@@ -365,6 +365,19 @@ class ContentGenerator:
         # Format context
         context = await self.retriever.format_multiple_sections(sections) if sections else ""
 
+        # If no direct sections found, try concept-based synthesis
+        if not sections and not context:
+            concept_context = self.concept_mapper.build_context_for_synthesis(topic)
+            if concept_context:
+                # Use concept-based generation
+                return await self._generate_concept_script(
+                    topic=topic,
+                    concept_context=concept_context,
+                    duration=duration,
+                    doc_context=doc_context,
+                    mode=mode,
+                )
+
         # Generate content
         prompt = PromptTemplates.get_script_prompt(
             topic=topic,
@@ -772,6 +785,68 @@ class ContentGenerator:
             ai_score=avg_ai_score,
             persona_used=self.default_persona,
             humanization_applied=humanization_applied,
+        )
+
+    async def _generate_concept_script(
+        self,
+        topic: str,
+        concept_context: str,
+        duration: str,
+        doc_context: DocumentContext,
+        mode: str = "user_provided",
+    ) -> GeneratedContent:
+        """Generate a dialog script using concept-based synthesis.
+
+        Used when no direct document sections match the topic, but we can
+        map it to constitutional principles conceptually.
+        """
+        # Get persona
+        persona_obj = self.persona_writer.get_persona(self.default_persona)
+        persona_description = persona_obj.to_prompt_description() if persona_obj else "conversational"
+
+        # Generate with concept prompt
+        prompt = PromptTemplates.get_concept_script_prompt(
+            topic=topic,
+            concept_context=concept_context,
+            duration=duration,
+            persona_description=persona_description,
+            doc_context=doc_context,
+        )
+
+        llm = await self._get_llm()
+        raw_content = llm.generate(
+            prompt=prompt,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
+            temperature=0.8,
+            max_tokens=3000,
+        )
+
+        # Parse and format
+        script = self.formatter.parse_script(raw_content, title=topic)
+        formatted = raw_content  # Store the full script as-is
+
+        # Build citations from concept mapping
+        mapping = self.concept_mapper.map_topic(topic)
+        citations = []
+        if mapping:
+            for section_num in mapping.section_references:
+                citations.append({
+                    "section_num": section_num,
+                    "section_title": f"Related to {topic}",
+                    "chapter_num": None,
+                    "chapter_title": None,
+                })
+
+        return GeneratedContent(
+            content_type="script",
+            raw_content=raw_content,
+            formatted_content=formatted,
+            topic=topic,
+            citations=citations,
+            validation=None,  # Scripts don't have character limits
+            mode=mode,
+            synthesis_mode="CONCEPT",
+            persona_used=self.default_persona,
         )
 
     # ========================================================================

@@ -837,3 +837,72 @@ TWEET 2: [content]
             persona_description=persona_description,
             **params,
         )
+
+    CONCEPT_SYNTHESIS_SCRIPT_PROMPT = """Create an educational dialog script about how {document_short_name} relates to {topic}.
+
+== CONCEPTUAL FRAMEWORK ==
+{concept_context}
+
+== YOUR TASK ==
+Think critically and creatively about this topic:
+1. How do constitutional principles apply here?
+2. What misconceptions do people have?
+3. What's the practical impact on everyday life?
+4. What insights can help people understand their rights?
+
+== FORMAT REQUIREMENTS ==
+- Write a natural conversation between 2-3 characters
+- Aim for {duration} of spoken content
+- Include specific {section_label_lower} citations naturally in dialog
+- End with a clear educational takeaway
+- NO legal advice
+
+== CHARACTERS ==
+- A curious person asking questions (relatable, represents the audience)
+- A knowledgeable friend explaining (approachable, not preachy)
+- Optionally, a third voice adding practical examples
+
+== WRITING STYLE ==
+Voice: {persona_description}
+
+DO NOT:
+- Ask for more information or document text
+- Make characters sound like textbooks
+- Use stiff, formal language
+- Have characters lecture at each other
+
+DO:
+- Make the conversation feel natural and engaging
+- Include moments of realization or "aha" moments
+- Use real-world scenarios the audience can relate to
+- Reference specific sections naturally in the flow
+- Include stage directions in [brackets] where helpful
+
+Format your response as:
+TITLE: [Script title]
+CHARACTERS: [List of characters with brief descriptions]
+---
+[Character Name]: [Dialog]
+[Character Name]: [Dialog]
+...
+---
+TAKEAWAY: [Key lesson from the script]"""
+
+    @classmethod
+    def get_concept_script_prompt(
+        cls,
+        topic: str,
+        concept_context: str,
+        duration: str = "2-3 minutes",
+        persona_description: str = "conversational and engaging",
+        doc_context: Optional[DocumentContext] = None,
+    ) -> str:
+        """Get formatted concept-based script synthesis prompt."""
+        params = cls._get_doc_params(doc_context)
+        return cls.CONCEPT_SYNTHESIS_SCRIPT_PROMPT.format(
+            topic=topic,
+            concept_context=concept_context,
+            duration=duration,
+            persona_description=persona_description,
+            **params,
+        )
