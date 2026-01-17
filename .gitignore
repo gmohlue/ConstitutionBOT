@@ -60,6 +60,9 @@ logs/
 htmlcov/
 .pytest_cache/
 .tox/
+node_modules/
+playwright-report/
+test-results/
 
 # Build artifacts
 *.egg-info/
