@@ -28,14 +28,14 @@
             <a href="/history" class="text-sm text-green-600 hover:text-green-500">View history →</a>
         </div>
 
-        <!-- Constitution Status -->
+        <!-- Document Status -->
         <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-            <dt class="truncate text-sm font-medium text-gray-500">Constitution</dt>
+            <dt class="truncate text-sm font-medium text-gray-500">Document</dt>
             <dd class="mt-1 text-3xl font-semibold tracking-tight" :class="stats.document_loaded ? 'text-green-600' : 'text-red-600'">
                 <span x-text="stats.document_loaded ? 'Loaded' : 'Not Loaded'">-</span>
             </dd>
             <span x-show="stats.document_loaded" class="text-sm text-gray-500" x-text="stats.total_sections + ' sections'"></span>
-            <a x-show="!stats.document_loaded" href="/constitution" class="text-sm text-green-600 hover:text-green-500">Upload now →</a>
+            <a x-show="!stats.document_loaded" href="/documents" class="text-sm text-green-600 hover:text-green-500">Upload now →</a>
         </div>
     </div>
 
@@ -65,14 +65,14 @@
                 </div>
             </a>
 
-            <!-- Upload Constitution -->
-            <a href="/constitution" class="relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm hover:border-green-400 hover:ring-1 hover:ring-green-400">
+            <!-- Upload Document -->
+            <a href="/documents" class="relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm hover:border-green-400 hover:ring-1 hover:ring-green-400">
                 <div class="flex-shrink-0">
-                    <span class="text-2xl">📜</span>
+                    <span class="text-2xl">📄</span>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-gray-900">Constitution</p>
-                    <p class="truncate text-sm text-gray-500">Manage constitution document</p>
+                    <p class="text-sm font-medium text-gray-900">Documents</p>
+                    <p class="truncate text-sm text-gray-500">Manage source documents</p>
                 </div>
             </a>
         </div>
