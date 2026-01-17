@@ -40,6 +40,40 @@ class ContentMode(str, Enum):
     HISTORICAL = "historical"
 
 
+class SALanguage(str, Enum):
+    """South Africa's 11 official languages."""
+
+    ENGLISH = "en"
+    AFRIKAANS = "af"
+    ISIZULU = "zu"
+    ISIXHOSA = "xh"
+    SEPEDI = "nso"  # Northern Sotho
+    SETSWANA = "tn"
+    SESOTHO = "st"  # Southern Sotho
+    XITSONGA = "ts"
+    SISWATI = "ss"
+    TSHIVENDA = "ve"
+    ISINDEBELE = "nr"
+
+    @classmethod
+    def get_display_name(cls, code: str) -> str:
+        """Get the display name for a language code."""
+        names = {
+            "en": "English",
+            "af": "Afrikaans",
+            "zu": "isiZulu",
+            "xh": "isiXhosa",
+            "nso": "Sepedi (Northern Sotho)",
+            "tn": "Setswana",
+            "st": "Sesotho (Southern Sotho)",
+            "ts": "Xitsonga",
+            "ss": "siSwati",
+            "ve": "Tshivenda",
+            "nr": "isiNdebele",
+        }
+        return names.get(code, code)
+
+
 class ContentQueue(Base):
     """Content queue - posts waiting for approval."""
 
@@ -52,6 +86,7 @@ class ContentQueue(Base):
     mode: Mapped[str] = mapped_column(String(50), default=ContentMode.BOT_PROPOSED.value)
     topic: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     citations: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    language: Mapped[str] = mapped_column(String(10), default=SALanguage.ENGLISH.value)
     status: Mapped[str] = mapped_column(String(50), default=ContentStatus.PENDING.value, index=True)
     admin_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     scheduled_for: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

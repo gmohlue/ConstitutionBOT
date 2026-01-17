@@ -206,3 +206,69 @@ class TwitterClient:
         except Exception as e:
             print(f"Failed to delete tweet: {e}")
             return False
+
+    def get_rate_limits(self) -> dict:
+        """Get current rate limit status for key endpoints.
+
+        Returns:
+            Dictionary with rate limit information for various endpoints
+        """
+        try:
+            # Use v1.1 API to get rate limits
+            limits = self.api.rate_limit_status()
+
+            # Extract key endpoints we care about
+            resources = limits.get("resources", {})
+
+            rate_limits = {
+                "tweets": self._extract_limit(
+                    resources.get("tweets", {}).get("/tweets", {})
+                ),
+                "tweet_create": self._extract_limit(
+                    resources.get("tweets", {}).get("/tweets/:id", {})
+                ),
+                "mentions": self._extract_limit(
+                    resources.get("users", {}).get("/users/:id/mentions", {})
+                ),
+                "users": self._extract_limit(
+                    resources.get("users", {}).get("/users/me", {})
+                ),
+            }
+
+            # Add app-level limits from v2 response headers if available
+            # These are typically stored by tweepy after requests
+
+            return {
+                "endpoints": rate_limits,
+                "app_limit": {
+                    "tweets_per_day": 50,  # Free tier limit
+                    "tweets_per_month": 1500,  # Free tier limit
+                },
+            }
+
+        except Exception as e:
+            print(f"Failed to get rate limits: {e}")
+            return {
+                "error": str(e),
+                "endpoints": {},
+                "app_limit": {
+                    "tweets_per_day": 50,
+                    "tweets_per_month": 1500,
+                },
+            }
+
+    def _extract_limit(self, limit_data: dict) -> dict:
+        """Extract rate limit info from API response."""
+        if not limit_data:
+            return {"limit": 0, "remaining": 0, "reset": 0}
+
+        import time
+        reset_time = limit_data.get("reset", 0)
+        reset_in_seconds = max(0, reset_time - int(time.time())) if reset_time else 0
+
+        return {
+            "limit": limit_data.get("limit", 0),
+            "remaining": limit_data.get("remaining", 0),
+            "reset": reset_time,
+            "reset_in_seconds": reset_in_seconds,
+        }

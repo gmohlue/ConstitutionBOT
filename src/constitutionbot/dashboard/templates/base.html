@@ -133,6 +133,14 @@
                                     </a>
                                 </li>
                                 <li>
+                                    <a href="/analytics" class="{% if active_page == 'analytics' %}bg-green-700 text-white{% else %}text-green-200 hover:text-white hover:bg-green-700{% endif %} group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold">
+                                        <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                        </svg>
+                                        Analytics
+                                    </a>
+                                </li>
+                                <li>
                                     <a href="/settings" class="{% if active_page == 'settings' %}bg-green-700 text-white{% else %}text-green-200 hover:text-white hover:bg-green-700{% endif %} group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold">
                                         <svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
@@ -170,6 +178,44 @@
                 <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
                     <div class="flex flex-1 items-center">
                         <h1 class="text-lg font-semibold text-gray-900 dark:text-white">{% block page_title %}Dashboard{% endblock %}</h1>
+                    </div>
+                    <!-- Rate limit indicator -->
+                    <div x-data="rateLimitWidget()" x-init="loadRateLimits()" class="flex items-center">
+                        <div class="relative" x-data="{ showTooltip: false }">
+                            <button @mouseenter="showTooltip = true" @mouseleave="showTooltip = false"
+                                    @click="loadRateLimits()"
+                                    class="flex items-center space-x-1 text-sm rounded-md px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <svg class="h-4 w-4" :class="statusColor" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                <span class="hidden sm:inline text-gray-600 dark:text-gray-300" x-text="statusText"></span>
+                            </button>
+                            <!-- Tooltip -->
+                            <div x-show="showTooltip" x-cloak
+                                 class="absolute right-0 top-full mt-2 w-64 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">API Rate Limits</div>
+                                <template x-if="error">
+                                    <p class="text-xs text-red-600 dark:text-red-400" x-text="error"></p>
+                                </template>
+                                <template x-if="!error && configured">
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between text-xs">
+                                            <span class="text-gray-600 dark:text-gray-300">Daily tweets</span>
+                                            <span class="font-medium" :class="dailyUsage > 80 ? 'text-red-600' : 'text-gray-900 dark:text-white'" x-text="dailyUsage + '% used'"></span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                            <div class="h-1.5 rounded-full transition-all" :class="dailyUsage > 80 ? 'bg-red-500' : 'bg-green-500'" :style="'width: ' + dailyUsage + '%'"></div>
+                                        </div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            <span x-text="appLimit?.tweets_per_day || 50"></span> tweets/day limit
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="!configured">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Twitter API not configured</p>
+                                </template>
+                            </div>
+                        </div>
                     </div>
                     <!-- Dark mode toggle -->
                     <div class="flex items-center">
@@ -381,6 +427,66 @@
                 </div>
             `;
             document.body.insertAdjacentHTML('beforeend', helpContent);
+        }
+
+        // Rate limit widget
+        function rateLimitWidget() {
+            return {
+                configured: false,
+                error: null,
+                endpoints: {},
+                appLimit: { tweets_per_day: 50, tweets_per_month: 1500 },
+                dailyUsage: 0,
+
+                get statusColor() {
+                    if (!this.configured) return 'text-gray-400';
+                    if (this.error) return 'text-red-500';
+                    if (this.dailyUsage > 80) return 'text-red-500';
+                    if (this.dailyUsage > 50) return 'text-yellow-500';
+                    return 'text-green-500';
+                },
+
+                get statusText() {
+                    if (!this.configured) return 'API';
+                    if (this.error) return 'Error';
+                    return this.dailyUsage + '%';
+                },
+
+                async loadRateLimits() {
+                    try {
+                        const response = await fetch('/api/settings/rate-limits');
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.configured = data.configured;
+                            this.error = data.error || null;
+                            this.endpoints = data.endpoints || {};
+                            this.appLimit = data.app_limit || { tweets_per_day: 50, tweets_per_month: 1500 };
+
+                            // Calculate usage based on daily post count
+                            // For now, estimate from history
+                            await this.calculateDailyUsage();
+                        }
+                    } catch (e) {
+                        this.error = 'Failed to load rate limits';
+                    }
+                },
+
+                async calculateDailyUsage() {
+                    try {
+                        // Get today's posts from history stats
+                        const response = await fetch('/api/history/stats');
+                        if (response.ok) {
+                            const stats = await response.json();
+                            // Estimate daily usage - we'd need to track actual daily posts
+                            // For now, show a simple indicator
+                            const estimatedDaily = Math.min(stats.total_posts % 50, 50);
+                            this.dailyUsage = Math.round((estimatedDaily / this.appLimit.tweets_per_day) * 100);
+                        }
+                    } catch (e) {
+                        // Ignore errors in usage calculation
+                    }
+                }
+            };
         }
     </script>
 

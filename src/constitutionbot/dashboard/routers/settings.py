@@ -149,3 +149,40 @@ async def get_twitter_status(
             "bearer_token": has_bearer,
         },
     }
+
+
+@router.get("/rate-limits")
+async def get_rate_limits(
+    _: str = Depends(require_auth),
+):
+    """Get current Twitter API rate limit status."""
+    settings = get_settings()
+
+    # Check if configured
+    configured = bool(
+        settings.twitter_api_key.get_secret_value()
+        and settings.twitter_access_token.get_secret_value()
+    )
+
+    if not configured:
+        return {
+            "configured": False,
+            "error": "Twitter API not configured",
+            "endpoints": {},
+            "app_limit": {"tweets_per_day": 50, "tweets_per_month": 1500},
+        }
+
+    try:
+        from constitutionbot.twitter.client import TwitterClient
+
+        client = TwitterClient()
+        limits = client.get_rate_limits()
+        limits["configured"] = True
+        return limits
+    except Exception as e:
+        return {
+            "configured": True,
+            "error": str(e),
+            "endpoints": {},
+            "app_limit": {"tweets_per_day": 50, "tweets_per_month": 1500},
+        }

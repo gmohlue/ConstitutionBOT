@@ -121,3 +121,90 @@ class PostHistoryRepository:
             "threads": threads,
             "replies": replies,
         }
+
+    async def get_engagement_analytics(self, days: int = 30) -> dict:
+        """Get aggregated engagement analytics for the specified period."""
+        from datetime import timedelta
+
+        from sqlalchemy import func
+
+        since = datetime.utcnow() - timedelta(days=days)
+
+        # Get posts with engagement data
+        query = select(PostHistory).where(
+            PostHistory.posted_at >= since,
+            PostHistory.engagement.isnot(None),
+        )
+        result = await self.session.execute(query)
+        posts = list(result.scalars().all())
+
+        # Aggregate engagement metrics
+        total_likes = 0
+        total_retweets = 0
+        total_replies = 0
+        total_impressions = 0
+        total_quotes = 0
+
+        for post in posts:
+            if post.engagement:
+                total_likes += post.engagement.get("likes", 0) or 0
+                total_retweets += post.engagement.get("retweets", 0) or 0
+                total_replies += post.engagement.get("replies", 0) or 0
+                total_impressions += post.engagement.get("impressions", 0) or 0
+                total_quotes += post.engagement.get("quotes", 0) or 0
+
+        posts_with_engagement = len(posts)
+        avg_likes = round(total_likes / posts_with_engagement, 1) if posts_with_engagement else 0
+        avg_retweets = round(total_retweets / posts_with_engagement, 1) if posts_with_engagement else 0
+        avg_replies = round(total_replies / posts_with_engagement, 1) if posts_with_engagement else 0
+
+        # Calculate engagement rate (engagements / impressions * 100)
+        total_engagements = total_likes + total_retweets + total_replies + total_quotes
+        engagement_rate = round((total_engagements / total_impressions * 100), 2) if total_impressions else 0
+
+        return {
+            "period_days": days,
+            "posts_count": posts_with_engagement,
+            "total_likes": total_likes,
+            "total_retweets": total_retweets,
+            "total_replies": total_replies,
+            "total_quotes": total_quotes,
+            "total_impressions": total_impressions,
+            "avg_likes": avg_likes,
+            "avg_retweets": avg_retweets,
+            "avg_replies": avg_replies,
+            "engagement_rate": engagement_rate,
+        }
+
+    async def get_top_posts(self, limit: int = 10, metric: str = "likes") -> list[PostHistory]:
+        """Get top performing posts by a specific metric."""
+        # Get all posts with engagement
+        query = select(PostHistory).where(PostHistory.engagement.isnot(None))
+        result = await self.session.execute(query)
+        posts = list(result.scalars().all())
+
+        # Sort by the specified metric
+        def get_metric(post):
+            if not post.engagement:
+                return 0
+            return post.engagement.get(metric, 0) or 0
+
+        posts.sort(key=get_metric, reverse=True)
+        return posts[:limit]
+
+    async def get_posts_needing_engagement_update(
+        self, hours_since_post: int = 1, hours_since_update: int = 6
+    ) -> list[PostHistory]:
+        """Get posts that need engagement metrics updated.
+
+        Returns posts that are at least hours_since_post old and haven't been
+        updated in hours_since_update hours.
+        """
+        from datetime import timedelta
+
+        now = datetime.utcnow()
+        min_age = now - timedelta(hours=hours_since_post)
+
+        query = select(PostHistory).where(PostHistory.posted_at <= min_age)
+        result = await self.session.execute(query)
+        return list(result.scalars().all())

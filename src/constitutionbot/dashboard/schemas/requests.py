@@ -40,6 +40,11 @@ class ContentGenerateRequest(BaseModel):
         default="user_provided",
         pattern="^(bot_proposed|user_provided|historical)$",
     )
+    language: str = Field(
+        default="en",
+        pattern="^(en|af|zu|xh|nso|tn|st|ts|ss|ve|nr)$",
+        description="Target language code (SA's 11 official languages)",
+    )
 
 
 class ReplyUpdateRequest(BaseModel):

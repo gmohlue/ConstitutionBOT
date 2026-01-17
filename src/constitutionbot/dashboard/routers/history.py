@@ -5,9 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from constitutionbot.dashboard.auth import require_auth
 from constitutionbot.dashboard.schemas.responses import (
+    AnalyticsDashboardResponse,
+    EngagementAnalyticsResponse,
     HistoryListResponse,
     HistoryResponse,
     StatsResponse,
+    TopPostResponse,
 )
 from constitutionbot.database import get_session
 from constitutionbot.database.models import ContentStatus
@@ -121,3 +124,79 @@ async def get_post(
         )
 
     return HistoryResponse.model_validate(post)
+
+
+@router.get("/analytics/engagement", response_model=EngagementAnalyticsResponse)
+async def get_engagement_analytics(
+    days: int = 30,
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get engagement analytics for the specified period."""
+    repo = PostHistoryRepository(session)
+    analytics = await repo.get_engagement_analytics(days=days)
+    return EngagementAnalyticsResponse(**analytics)
+
+
+@router.get("/analytics/top-posts", response_model=list[TopPostResponse])
+async def get_top_posts(
+    limit: int = 10,
+    metric: str = "likes",
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get top performing posts by engagement metric."""
+    if metric not in ["likes", "retweets", "replies", "impressions"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid metric. Choose from: likes, retweets, replies, impressions",
+        )
+
+    repo = PostHistoryRepository(session)
+    posts = await repo.get_top_posts(limit=limit, metric=metric)
+
+    return [
+        TopPostResponse(
+            id=post.id,
+            tweet_id=post.tweet_id,
+            content=post.content,
+            content_type=post.content_type,
+            posted_at=post.posted_at,
+            likes=post.engagement.get("likes", 0) if post.engagement else 0,
+            retweets=post.engagement.get("retweets", 0) if post.engagement else 0,
+            replies=post.engagement.get("replies", 0) if post.engagement else 0,
+            impressions=post.engagement.get("impressions", 0) if post.engagement else 0,
+        )
+        for post in posts
+    ]
+
+
+@router.get("/analytics/dashboard", response_model=AnalyticsDashboardResponse)
+async def get_analytics_dashboard(
+    days: int = 30,
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get full analytics dashboard data."""
+    repo = PostHistoryRepository(session)
+
+    analytics = await repo.get_engagement_analytics(days=days)
+    top_posts = await repo.get_top_posts(limit=5, metric="likes")
+
+    return AnalyticsDashboardResponse(
+        analytics=EngagementAnalyticsResponse(**analytics),
+        top_posts=[
+            TopPostResponse(
+                id=post.id,
+                tweet_id=post.tweet_id,
+                content=post.content,
+                content_type=post.content_type,
+                posted_at=post.posted_at,
+                likes=post.engagement.get("likes", 0) if post.engagement else 0,
+                retweets=post.engagement.get("retweets", 0) if post.engagement else 0,
+                replies=post.engagement.get("replies", 0) if post.engagement else 0,
+                impressions=post.engagement.get("impressions", 0) if post.engagement else 0,
+            )
+            for post in top_posts
+        ],
+    )

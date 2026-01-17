@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - ConstitutionBOT Admin{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+
+{% block content %}
+<div x-data="analyticsData()" x-init="loadAnalytics()">
+    <!-- Period Selector -->
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <label for="period" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Time Period</label>
+            <select id="period" x-model="period" @change="loadAnalytics()"
+                    class="mt-1 block w-40 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+            </select>
+        </div>
+        <button @click="loadAnalytics()" :disabled="loading"
+                class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 disabled:opacity-50">
+            <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Refresh
+        </button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <!-- Total Impressions -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Impressions</dt>
+                            <dd class="text-lg font-semibold text-gray-900 dark:text-white" x-text="formatNumber(analytics?.total_impressions || 0)"></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Likes -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Likes</dt>
+                            <dd class="text-lg font-semibold text-gray-900 dark:text-white" x-text="formatNumber(analytics?.total_likes || 0)"></dd>
+                            <dd class="text-xs text-gray-500 dark:text-gray-400">avg <span x-text="analytics?.avg_likes || 0"></span>/post</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Retweets -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-green-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M23.77 15.67a.749.749 0 0 0-1.06 0l-2.22 2.22V7.65a3.755 3.755 0 0 0-3.75-3.75h-5.85a.75.75 0 0 0 0 1.5h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22a.749.749 0 1 0-1.06 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5a.747.747 0 0 0 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22a.752.752 0 0 0 1.062 0 .749.749 0 0 0 0-1.06l-3.5-3.5a.747.747 0 0 0-1.06 0l-3.5 3.5a.749.749 0 1 0 1.06 1.06l2.22-2.22V16.7a3.755 3.755 0 0 0 3.75 3.75h5.85a.75.75 0 0 0 0-1.5z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Retweets</dt>
+                            <dd class="text-lg font-semibold text-gray-900 dark:text-white" x-text="formatNumber(analytics?.total_retweets || 0)"></dd>
+                            <dd class="text-xs text-gray-500 dark:text-gray-400">avg <span x-text="analytics?.avg_retweets || 0"></span>/post</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Engagement Rate -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Engagement Rate</dt>
+                            <dd class="text-lg font-semibold text-gray-900 dark:text-white" x-text="(analytics?.engagement_rate || 0) + '%'"></dd>
+                            <dd class="text-xs text-gray-500 dark:text-gray-400"><span x-text="analytics?.posts_count || 0"></span> posts tracked</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Stats -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center justify-between">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Replies Received</dt>
+                    <dd class="text-lg font-semibold text-gray-900 dark:text-white" x-text="formatNumber(analytics?.total_replies || 0)"></dd>
+                </div>
+                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">avg <span x-text="analytics?.avg_replies || 0"></span>/post</div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center justify-between">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Quote Tweets</dt>
+                    <dd class="text-lg font-semibold text-gray-900 dark:text-white" x-text="formatNumber(analytics?.total_quotes || 0)"></dd>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center justify-between">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Period</dt>
+                    <dd class="text-lg font-semibold text-gray-900 dark:text-white" x-text="period + ' days'"></dd>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Posts Section -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Top Performing Posts</h3>
+                <select x-model="sortMetric" @change="loadTopPosts()"
+                        class="block w-32 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="likes">By Likes</option>
+                    <option value="retweets">By Retweets</option>
+                    <option value="replies">By Replies</option>
+                    <option value="impressions">By Impressions</option>
+                </select>
+            </div>
+
+            <!-- Loading State -->
+            <div x-show="loadingTopPosts" class="text-center py-8">
+                <svg class="animate-spin h-8 w-8 text-green-600 mx-auto" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!loadingTopPosts && topPosts.length === 0" class="text-center py-8">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No engagement data yet</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Engagement metrics will appear here once posts receive interactions.</p>
+            </div>
+
+            <!-- Posts List -->
+            <div x-show="!loadingTopPosts && topPosts.length > 0" class="space-y-4">
+                <template x-for="(post, index) in topPosts" :key="post.id">
+                    <div class="border dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-sm font-medium"
+                                      :class="{
+                                          'bg-yellow-100 text-yellow-800': index === 0,
+                                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300': index === 1,
+                                          'bg-orange-100 text-orange-800': index === 2,
+                                          'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400': index > 2
+                                      }"
+                                      x-text="index + 1"></span>
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                      :class="{
+                                          'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300': post.content_type === 'tweet',
+                                          'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300': post.content_type === 'thread',
+                                          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300': post.content_type === 'script'
+                                      }"
+                                      x-text="post.content_type"></span>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400" x-text="formatDate(post.posted_at)"></span>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-700 dark:text-gray-300 line-clamp-2" x-text="post.content"></p>
+                        <div class="mt-3 flex items-center space-x-6 text-sm">
+                            <span class="flex items-center text-gray-500 dark:text-gray-400">
+                                <svg class="w-4 h-4 mr-1 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                </svg>
+                                <span x-text="formatNumber(post.likes)"></span>
+                            </span>
+                            <span class="flex items-center text-gray-500 dark:text-gray-400">
+                                <svg class="w-4 h-4 mr-1 text-green-400" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M23.77 15.67a.749.749 0 0 0-1.06 0l-2.22 2.22V7.65a3.755 3.755 0 0 0-3.75-3.75h-5.85a.75.75 0 0 0 0 1.5h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22a.749.749 0 1 0-1.06 1.06l3.5 3.5c.145.147.337.22.53.22s.383-.072.53-.22l3.5-3.5a.747.747 0 0 0 0-1.06zm-10.66 3.28H7.26c-1.24 0-2.25-1.01-2.25-2.25V6.46l2.22 2.22a.752.752 0 0 0 1.062 0 .749.749 0 0 0 0-1.06l-3.5-3.5a.747.747 0 0 0-1.06 0l-3.5 3.5a.749.749 0 1 0 1.06 1.06l2.22-2.22V16.7a3.755 3.755 0 0 0 3.75 3.75h5.85a.75.75 0 0 0 0-1.5z"/>
+                                </svg>
+                                <span x-text="formatNumber(post.retweets)"></span>
+                            </span>
+                            <span class="flex items-center text-gray-500 dark:text-gray-400">
+                                <svg class="w-4 h-4 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                <span x-text="formatNumber(post.replies)"></span>
+                            </span>
+                            <span class="flex items-center text-gray-500 dark:text-gray-400">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span x-text="formatNumber(post.impressions)"></span>
+                            </span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function analyticsData() {
+    return {
+        period: '30',
+        loading: false,
+        analytics: null,
+        topPosts: [],
+        loadingTopPosts: false,
+        sortMetric: 'likes',
+
+        async loadAnalytics() {
+            this.loading = true;
+            try {
+                const response = await fetch(`/api/history/analytics/engagement?days=${this.period}`);
+                if (response.ok) {
+                    this.analytics = await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+            }
+            this.loading = false;
+
+            // Also load top posts
+            await this.loadTopPosts();
+        },
+
+        async loadTopPosts() {
+            this.loadingTopPosts = true;
+            try {
+                const response = await fetch(`/api/history/analytics/top-posts?limit=10&metric=${this.sortMetric}`);
+                if (response.ok) {
+                    this.topPosts = await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to load top posts:', error);
+            }
+            this.loadingTopPosts = false;
+        },
+
+        formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        },
+
+        formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-ZA', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+    }
+}
+</script>
+{% endblock %}

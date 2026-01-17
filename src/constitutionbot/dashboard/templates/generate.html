@@ -95,6 +95,25 @@
                         <p class="mt-1 text-xs text-gray-500">Comma-separated section numbers to reference</p>
                     </div>
 
+                    <!-- Language Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Language</label>
+                        <select x-model="language" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="en">English</option>
+                            <option value="af">Afrikaans</option>
+                            <option value="zu">isiZulu</option>
+                            <option value="xh">isiXhosa</option>
+                            <option value="nso">Sepedi (Northern Sotho)</option>
+                            <option value="tn">Setswana</option>
+                            <option value="st">Sesotho (Southern Sotho)</option>
+                            <option value="ts">Xitsonga</option>
+                            <option value="ss">siSwati</option>
+                            <option value="ve">Tshivenda</option>
+                            <option value="nr">isiNdebele</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Generate content in one of South Africa's 11 official languages</p>
+                    </div>
+
                     <!-- Generate Button -->
                     <div class="pt-4">
                         <button @click="generate()" :disabled="generating || (mode !== 'bot_proposed' && !topic)"
@@ -132,10 +151,16 @@
 
                 <!-- Result -->
                 <div x-show="result" class="mt-4 space-y-4">
-                    <!-- Topic -->
-                    <div>
-                        <p class="text-sm font-medium text-gray-500">Topic</p>
-                        <p class="text-sm text-gray-900" x-text="result?.topic"></p>
+                    <!-- Topic and Language -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Topic</p>
+                            <p class="text-sm text-gray-900" x-text="result?.topic"></p>
+                        </div>
+                        <div x-show="result?.language && result?.language !== 'en'">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800"
+                                  x-text="getLanguageName(result?.language)"></span>
+                        </div>
                     </div>
 
                     <!-- Content -->
@@ -377,6 +402,7 @@ function generateData() {
         numTweets: 5,
         scriptDuration: '2-3 minutes',
         sectionNums: '',
+        language: 'en',
         generating: false,
         result: null,
         suggestion: null,
@@ -409,6 +435,7 @@ function generateData() {
                         this.numTweets = data.numTweets || 5;
                         this.scriptDuration = data.scriptDuration || '2-3 minutes';
                         this.sectionNums = data.sectionNums || '';
+                        this.language = data.language || 'en';
                         this.draftLoaded = true;
                         showToast('Draft restored', 'info');
                     }
@@ -429,6 +456,7 @@ function generateData() {
                     numTweets: this.numTweets,
                     scriptDuration: this.scriptDuration,
                     sectionNums: this.sectionNums,
+                    language: this.language,
                     savedAt: new Date().toISOString()
                 };
                 localStorage.setItem('constitutionbot_draft', JSON.stringify(draft));
@@ -456,7 +484,8 @@ function generateData() {
                 content_type: this.contentType,
                 num_tweets: parseInt(this.numTweets),
                 duration: this.scriptDuration,
-                mode: this.mode
+                mode: this.mode,
+                language: this.language
             };
 
             if (this.sectionNums) {
@@ -546,6 +575,23 @@ function generateData() {
                 this.sectionNums = this.suggestion.section_nums.join(', ');
                 this.suggestion = null;
             }
+        },
+
+        getLanguageName(code) {
+            const names = {
+                'en': 'English',
+                'af': 'Afrikaans',
+                'zu': 'isiZulu',
+                'xh': 'isiXhosa',
+                'nso': 'Sepedi',
+                'tn': 'Setswana',
+                'st': 'Sesotho',
+                'ts': 'Xitsonga',
+                'ss': 'siSwati',
+                've': 'Tshivenda',
+                'nr': 'isiNdebele'
+            };
+            return names[code] || code;
         }
     }
 }

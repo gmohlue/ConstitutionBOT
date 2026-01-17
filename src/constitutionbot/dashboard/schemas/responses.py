@@ -16,6 +16,7 @@ class ContentQueueResponse(BaseModel):
     mode: str
     topic: Optional[str]
     citations: Optional[list[dict]]
+    language: str = "en"
     status: str
     admin_notes: Optional[str]
     scheduled_for: Optional[datetime] = None
@@ -241,3 +242,43 @@ class SafetyCheckResponse(BaseModel):
     is_blocked: bool
     concerns: list[str] = Field(default_factory=list)
     blocked_reason: Optional[str] = None
+
+
+class EngagementAnalyticsResponse(BaseModel):
+    """Engagement analytics response."""
+
+    period_days: int
+    posts_count: int
+    total_likes: int
+    total_retweets: int
+    total_replies: int
+    total_quotes: int
+    total_impressions: int
+    avg_likes: float
+    avg_retweets: float
+    avg_replies: float
+    engagement_rate: float
+
+
+class TopPostResponse(BaseModel):
+    """Top performing post response."""
+
+    id: int
+    tweet_id: str
+    content: str
+    content_type: str
+    posted_at: datetime
+    likes: int = 0
+    retweets: int = 0
+    replies: int = 0
+    impressions: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class AnalyticsDashboardResponse(BaseModel):
+    """Full analytics dashboard response."""
+
+    analytics: EngagementAnalyticsResponse
+    top_posts: list[TopPostResponse] = Field(default_factory=list)

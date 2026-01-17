@@ -188,6 +188,17 @@ def create_app() -> FastAPI:
             {"request": request, "active_page": "history"},
         )
 
+    @app.get("/analytics", response_class=HTMLResponse)
+    async def analytics_page(
+        request: Request,
+        _: str = Depends(require_auth),
+    ):
+        """Analytics dashboard page."""
+        return templates.TemplateResponse(
+            "analytics.html",
+            {"request": request, "active_page": "analytics"},
+        )
+
     @app.get("/settings", response_class=HTMLResponse)
     async def settings_page(
         request: Request,
