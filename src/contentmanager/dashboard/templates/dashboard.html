@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Content Manager{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div x-data="dashboardData()" x-init="loadStats()">
+    <!-- Stats -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Pending Content -->
+        <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+            <dt class="truncate text-sm font-medium text-gray-500">Pending Content</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900" x-text="stats.pending_content">-</dd>
+            <a href="/queue" class="text-sm text-green-600 hover:text-green-500">View queue →</a>
+        </div>
+
+        <!-- Pending Replies -->
+        <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+            <dt class="truncate text-sm font-medium text-gray-500">Pending Replies</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900" x-text="stats.pending_replies">-</dd>
+            <a href="/replies" class="text-sm text-green-600 hover:text-green-500">View replies →</a>
+        </div>
+
+        <!-- Total Posts -->
+        <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+            <dt class="truncate text-sm font-medium text-gray-500">Total Posts</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900" x-text="stats.total_posts">-</dd>
+            <a href="/history" class="text-sm text-green-600 hover:text-green-500">View history →</a>
+        </div>
+
+        <!-- Constitution Status -->
+        <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+            <dt class="truncate text-sm font-medium text-gray-500">Constitution</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight" :class="stats.constitution_loaded ? 'text-green-600' : 'text-red-600'">
+                <span x-text="stats.constitution_loaded ? 'Loaded' : 'Not Loaded'">-</span>
+            </dd>
+            <span x-show="stats.constitution_loaded" class="text-sm text-gray-500" x-text="stats.total_sections + ' sections'"></span>
+            <a x-show="!stats.constitution_loaded" href="/constitution" class="text-sm text-green-600 hover:text-green-500">Upload now →</a>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mt-8">
+        <h2 class="text-lg font-medium text-gray-900">Quick Actions</h2>
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <!-- Generate Content -->
+            <a href="/generate" class="relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm hover:border-green-400 hover:ring-1 hover:ring-green-400">
+                <div class="flex-shrink-0">
+                    <span class="text-2xl">✨</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-900">Generate Content</p>
+                    <p class="truncate text-sm text-gray-500">Create new educational tweets</p>
+                </div>
+            </a>
+
+            <!-- Review Queue -->
+            <a href="/queue" class="relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm hover:border-green-400 hover:ring-1 hover:ring-green-400">
+                <div class="flex-shrink-0">
+                    <span class="text-2xl">📋</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-900">Review Queue</p>
+                    <p class="truncate text-sm text-gray-500">Approve pending content</p>
+                </div>
+            </a>
+
+            <!-- Upload Constitution -->
+            <a href="/constitution" class="relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm hover:border-green-400 hover:ring-1 hover:ring-green-400">
+                <div class="flex-shrink-0">
+                    <span class="text-2xl">📜</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-900">Constitution</p>
+                    <p class="truncate text-sm text-gray-500">Manage constitution document</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Bot Status -->
+    <div class="mt-8">
+        <h2 class="text-lg font-medium text-gray-900">Bot Status</h2>
+        <div class="mt-4 rounded-lg bg-white shadow">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold leading-6 text-gray-900">Twitter Bot</h3>
+                        <p class="mt-1 text-sm text-gray-500">Automatic posting and mention monitoring</p>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="flex h-3 w-3 relative mr-2">
+                            <span :class="stats.bot_enabled ? 'bg-green-400' : 'bg-gray-400'" class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"></span>
+                            <span :class="stats.bot_enabled ? 'bg-green-500' : 'bg-gray-500'" class="relative inline-flex rounded-full h-3 w-3"></span>
+                        </span>
+                        <span x-text="stats.bot_enabled ? 'Active' : 'Inactive'" class="text-sm font-medium" :class="stats.bot_enabled ? 'text-green-600' : 'text-gray-600'"></span>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold leading-6 text-gray-900">Auto-Generate</h3>
+                        <p class="mt-1 text-sm text-gray-500">Automatically create content suggestions</p>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="flex h-3 w-3 relative mr-2">
+                            <span :class="stats.auto_generate_enabled ? 'bg-green-400' : 'bg-gray-400'" class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"></span>
+                            <span :class="stats.auto_generate_enabled ? 'bg-green-500' : 'bg-gray-500'" class="relative inline-flex rounded-full h-3 w-3"></span>
+                        </span>
+                        <span x-text="stats.auto_generate_enabled ? 'Active' : 'Inactive'" class="text-sm font-medium" :class="stats.auto_generate_enabled ? 'text-green-600' : 'text-gray-600'"></span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <a href="/settings" class="text-sm font-medium text-green-600 hover:text-green-500">Configure settings →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function dashboardData() {
+    return {
+        stats: {
+            pending_content: 0,
+            pending_replies: 0,
+            total_posts: 0,
+            constitution_loaded: false,
+            total_sections: 0,
+            bot_enabled: false,
+            auto_generate_enabled: false
+        },
+        async loadStats() {
+            try {
+                const response = await fetch('/api/history/stats');
+                if (response.ok) {
+                    this.stats = await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

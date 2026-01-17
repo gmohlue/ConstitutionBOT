@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+
+{% block title %}Content Queue - Content Manager{% endblock %}
+{% block page_title %}Content Queue{% endblock %}
+
+{% block content %}
+<div x-data="{ ...queueData(), showPreview: false }" x-init="loadQueue()">
+    <!-- Header with filters -->
+    <div class="sm:flex sm:items-center sm:justify-between">
+        <div>
+            <p class="mt-1 text-sm text-gray-700">Review and approve content before posting to Twitter</p>
+        </div>
+        <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <a href="/generate" class="block rounded-md bg-green-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                Generate New Content
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="mt-4 flex flex-col sm:flex-row gap-4">
+        <!-- Search box -->
+        <div class="relative flex-1">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <input type="text"
+                   x-model="searchQuery"
+                   @input="clearSelection()"
+                   placeholder="Search by topic or content..."
+                   class="block w-full rounded-md border-0 py-2 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-600 sm:text-sm sm:leading-6">
+            <button x-show="searchQuery" @click="searchQuery = ''"
+                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <!-- Content type filter -->
+        <select x-model="contentTypeFilter" @change="clearSelection()"
+                class="rounded-md border-0 py-2 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-green-600 sm:text-sm">
+            <option value="">All types</option>
+            <option value="tweet">Tweet</option>
+            <option value="thread">Thread</option>
+            <option value="script">Script</option>
+        </select>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="mt-4 border-b border-gray-200">
+        <nav class="-mb-px flex space-x-8">
+            <button @click="filter = 'pending'; clearSelection()" :class="filter === 'pending' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Pending <span class="ml-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600" x-text="counts.pending"></span>
+            </button>
+            <button @click="filter = 'approved'; clearSelection()" :class="filter === 'approved' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Approved <span class="ml-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600" x-text="counts.approved"></span>
+            </button>
+            <button @click="filter = 'scheduled'; clearSelection()" :class="filter === 'scheduled' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                Scheduled <span class="ml-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600" x-text="counts.scheduled"></span>
+            </button>
+            <button @click="filter = null; clearSelection()" :class="filter === null ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'" class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium">
+                All
+            </button>
+        </nav>
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    <div x-show="selectedItems.length > 0" x-cloak
+         class="mt-4 flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+        <div class="flex items-center space-x-3">
+            <span class="text-sm font-medium text-green-800">
+                <span x-text="selectedItems.length"></span> item(s) selected
+            </span>
+            <button @click="clearSelection()" class="text-sm text-green-600 hover:text-green-800 underline">
+                Clear selection
+            </button>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button x-show="filter === 'pending'"
+                    @click="bulkApprove()"
+                    class="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                Approve All
+            </button>
+            <button x-show="filter === 'pending'"
+                    @click="bulkReject()"
+                    class="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Reject All
+            </button>
+            <button @click="bulkDelete()"
+                    class="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+                Delete All
+            </button>
+        </div>
+    </div>
+
+    <!-- Select All Row -->
+    <div x-show="!loading && filteredItems.length > 0" class="mt-4 flex items-center space-x-3 text-sm text-gray-600">
+        <label class="flex items-center cursor-pointer">
+            <input type="checkbox"
+                   :checked="allSelected"
+                   @change="toggleSelectAll()"
+                   class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
+            <span class="ml-2">Select all</span>
+        </label>
+        <span class="text-gray-400">|</span>
+        <span x-text="filteredItems.length + ' items'"></span>
+    </div>
+
+    <!-- Queue list -->
+    <div class="mt-6 space-y-4">
+        <template x-if="loading">
+            <div class="text-center py-12">
+                <svg class="animate-spin h-8 w-8 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="mt-2 text-sm text-gray-500">Loading queue...</p>
+            </div>
+        </template>
+
+        <template x-if="!loading && filteredItems.length === 0">
+            <div class="text-center py-12 bg-white rounded-lg shadow">
+                <span class="text-4xl">📭</span>
+                <h3 class="mt-2 text-sm font-semibold text-gray-900">No content</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by generating some content.</p>
+                <div class="mt-6">
+                    <a href="/generate" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                        Generate Content
+                    </a>
+                </div>
+            </div>
+        </template>
+
+        <template x-for="item in filteredItems" :key="item.id">
+            <div class="bg-white shadow rounded-lg overflow-hidden"
+                 :class="{ 'ring-2 ring-green-500': isSelected(item.id) }">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-start justify-between">
+                        <!-- Checkbox -->
+                        <div class="flex items-start mr-4">
+                            <input type="checkbox"
+                                   :checked="isSelected(item.id)"
+                                   @change="toggleSelect(item.id)"
+                                   class="mt-1 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer">
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
+                                      :class="{
+                                          'bg-yellow-100 text-yellow-800': item.status === 'pending',
+                                          'bg-green-100 text-green-800': item.status === 'approved',
+                                          'bg-purple-100 text-purple-800': item.status === 'scheduled',
+                                          'bg-red-100 text-red-800': item.status === 'rejected',
+                                          'bg-blue-100 text-blue-800': item.status === 'posted'
+                                      }"
+                                      x-text="item.status"></span>
+                                <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600" x-text="item.content_type"></span>
+                                <span class="inline-flex items-center rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-800" x-text="item.mode"></span>
+                            </div>
+                            <p class="mt-2 text-sm font-medium text-gray-900" x-text="item.topic || 'Untitled'"></p>
+                            <div class="mt-2 p-3 bg-gray-50 rounded-md">
+                                <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="item.formatted_content"></p>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500">
+                                <span x-text="item.formatted_content.length"></span>/280 characters
+                                <span x-show="item.formatted_content.length > 280" class="text-red-600 font-medium">⚠️ Over limit!</span>
+                            </p>
+
+                            <!-- Citations -->
+                            <div x-show="item.citations && item.citations.length > 0" class="mt-2">
+                                <p class="text-xs font-medium text-gray-500">Citations:</p>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    <template x-for="citation in item.citations" :key="citation.section_num">
+                                        <span class="inline-flex items-center rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                                            Section <span x-text="citation.section_num"></span>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Scheduled info -->
+                            <div x-show="item.status === 'scheduled' && item.scheduled_for" class="mt-2 p-2 bg-purple-50 rounded-md">
+                                <p class="text-xs text-purple-700">
+                                    <span class="font-medium">Scheduled for:</span>
+                                    <span x-text="formatDate(item.scheduled_for)"></span>
+                                    <span x-show="item.auto_post" class="ml-2 inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Auto-post</span>
+                                    <span x-show="!item.auto_post" class="ml-2 inline-flex items-center rounded bg-yellow-100 px-1.5 py-0.5 text-xs font-medium text-yellow-700">Manual</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
+                        <p class="text-xs text-gray-500">
+                            Created <span x-text="formatDate(item.created_at)"></span>
+                        </p>
+                        <div class="flex space-x-2" x-show="item.status === 'pending'">
+                            <button @click="showTwitterPreview(item.formatted_content, item.topic)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Preview
+                            </button>
+                            <button @click="editItem(item)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                Edit
+                            </button>
+                            <button @click="rejectItem(item.id)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                Reject
+                            </button>
+                            <button @click="approveItem(item.id)" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                                Approve
+                            </button>
+                        </div>
+                        <div class="flex space-x-2" x-show="item.status === 'approved'">
+                            <button @click="showTwitterPreview(item.formatted_content, item.topic)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Preview
+                            </button>
+                            <button @click="openScheduleModal(item)" class="inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500">
+                                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                                </svg>
+                                Schedule
+                            </button>
+                            <button @click="deleteItem(item.id)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                Delete
+                            </button>
+                        </div>
+                        <div class="flex space-x-2" x-show="item.status === 'scheduled'">
+                            <button @click="showTwitterPreview(item.formatted_content, item.topic)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Preview
+                            </button>
+                            <button @click="openScheduleModal(item)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                Reschedule
+                            </button>
+                            <button @click="unscheduleItem(item.id)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-orange-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                Unschedule
+                            </button>
+                            <button @click="deleteItem(item.id)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                Delete
+                            </button>
+                        </div>
+                        <div x-show="item.status === 'rejected' || item.status === 'posted'">
+                            <button @click="deleteItem(item.id)" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Edit Modal -->
+    <div x-show="editingItem" x-cloak class="relative z-50">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Edit Content</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Content</label>
+                        <textarea x-model="editingItem.formatted_content" rows="6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"></textarea>
+                        <p class="mt-1 text-xs text-gray-500"><span x-text="editingItem?.formatted_content?.length || 0"></span>/280 characters</p>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700">Admin Notes</label>
+                        <textarea x-model="editingItem.admin_notes" rows="2" placeholder="Optional notes..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"></textarea>
+                    </div>
+                    <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                        <button @click="saveEdit()" class="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:col-start-2">
+                            Save Changes
+                        </button>
+                        <button @click="editingItem = null" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div x-show="schedulingItem" x-cloak class="relative z-50">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">
+                        <span x-text="schedulingItem?.status === 'scheduled' ? 'Reschedule Content' : 'Schedule Content'"></span>
+                    </h3>
+
+                    <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                        <p class="text-sm font-medium text-gray-900" x-text="schedulingItem?.topic || 'Untitled'"></p>
+                        <p class="text-sm text-gray-500 mt-1 line-clamp-2" x-text="schedulingItem?.formatted_content"></p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Date</label>
+                            <input
+                                type="date"
+                                x-model="scheduleDate"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Time</label>
+                            <input
+                                type="time"
+                                x-model="scheduleTime"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                            >
+                        </div>
+                        <div class="flex items-center">
+                            <input
+                                type="checkbox"
+                                id="schedule-auto-post"
+                                x-model="scheduleAutoPost"
+                                class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            >
+                            <label for="schedule-auto-post" class="ml-2 block text-sm text-gray-900">
+                                Auto-post at scheduled time
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-500">
+                            If enabled, the content will be automatically posted to Twitter at the scheduled time. Otherwise, you'll need to manually post it.
+                        </p>
+                    </div>
+
+                    <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                        <button @click="confirmSchedule()" class="inline-flex w-full justify-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 sm:col-start-2">
+                            Schedule
+                        </button>
+                        <button @click="closeScheduleModal()" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Twitter Preview Modal -->
+    {% include "partials/twitter_preview.html" %}
+</div>
+
+<script>
+function queueData() {
+    return {
+        items: [],
+        loading: true,
+        filter: 'pending',
+        counts: { pending: 0, approved: 0, scheduled: 0 },
+        editingItem: null,
+        schedulingItem: null,
+        scheduleDate: '',
+        scheduleTime: '09:00',
+        scheduleAutoPost: false,
+        // Bulk selection state
+        selectedItems: [],
+        // Search and filter state
+        searchQuery: '',
+        contentTypeFilter: '',
+
+        get filteredItems() {
+            let items = this.items;
+
+            // Filter by status
+            if (this.filter) {
+                items = items.filter(item => item.status === this.filter);
+            }
+
+            // Filter by content type
+            if (this.contentTypeFilter) {
+                items = items.filter(item => item.content_type === this.contentTypeFilter);
+            }
+
+            // Filter by search query
+            if (this.searchQuery.trim()) {
+                const query = this.searchQuery.toLowerCase().trim();
+                items = items.filter(item => {
+                    const topic = (item.topic || '').toLowerCase();
+                    const content = (item.formatted_content || '').toLowerCase();
+                    return topic.includes(query) || content.includes(query);
+                });
+            }
+
+            return items;
+        },
+
+        get allSelected() {
+            return this.filteredItems.length > 0 &&
+                   this.filteredItems.every(item => this.selectedItems.includes(item.id));
+        },
+
+        async loadQueue() {
+            this.loading = true;
+            try {
+                const response = await fetch('/api/queue');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.items = data.items;
+                    this.counts.pending = data.pending_count;
+                    this.counts.approved = data.approved_count;
+                    this.counts.scheduled = this.items.filter(i => i.status === 'scheduled').length;
+                }
+            } catch (error) {
+                console.error('Failed to load queue:', error);
+                showToast('Failed to load queue', 'error');
+            }
+            this.loading = false;
+        },
+
+        async approveItem(id) {
+            try {
+                const response = await fetch(`/api/queue/${id}/approve`, { method: 'POST' });
+                if (response.ok) {
+                    showToast('Content approved', 'success');
+                    this.loadQueue();
+                } else {
+                    showToast('Failed to approve', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to approve', 'error');
+            }
+        },
+
+        async rejectItem(id) {
+            try {
+                const response = await fetch(`/api/queue/${id}/reject`, { method: 'POST' });
+                if (response.ok) {
+                    showToast('Content rejected', 'success');
+                    this.loadQueue();
+                } else {
+                    showToast('Failed to reject', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to reject', 'error');
+            }
+        },
+
+        async deleteItem(id) {
+            if (!confirm('Are you sure you want to delete this item?')) return;
+            try {
+                const response = await fetch(`/api/queue/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showToast('Item deleted', 'success');
+                    this.loadQueue();
+                } else {
+                    showToast('Failed to delete', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to delete', 'error');
+            }
+        },
+
+        editItem(item) {
+            this.editingItem = { ...item };
+        },
+
+        async saveEdit() {
+            try {
+                const response = await fetch(`/api/queue/${this.editingItem.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        formatted_content: this.editingItem.formatted_content,
+                        admin_notes: this.editingItem.admin_notes
+                    })
+                });
+                if (response.ok) {
+                    showToast('Changes saved', 'success');
+                    this.editingItem = null;
+                    this.loadQueue();
+                } else {
+                    showToast('Failed to save', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to save', 'error');
+            }
+        },
+
+        openScheduleModal(item) {
+            this.schedulingItem = { ...item };
+            if (item.scheduled_for) {
+                const date = new Date(item.scheduled_for);
+                this.scheduleDate = date.toISOString().split('T')[0];
+                this.scheduleTime = date.toTimeString().slice(0, 5);
+                this.scheduleAutoPost = item.auto_post;
+            } else {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                this.scheduleDate = tomorrow.toISOString().split('T')[0];
+                this.scheduleTime = '09:00';
+                this.scheduleAutoPost = false;
+            }
+        },
+
+        closeScheduleModal() {
+            this.schedulingItem = null;
+            this.scheduleDate = '';
+            this.scheduleTime = '09:00';
+            this.scheduleAutoPost = false;
+        },
+
+        async confirmSchedule() {
+            if (!this.scheduleDate || !this.scheduleTime) {
+                showToast('Please select date and time', 'warning');
+                return;
+            }
+
+            const scheduledFor = new Date(`${this.scheduleDate}T${this.scheduleTime}`).toISOString();
+
+            try {
+                // If rescheduling, first unschedule
+                if (this.schedulingItem.status === 'scheduled') {
+                    await fetch(`/api/calendar/${this.schedulingItem.id}/unschedule`, { method: 'POST' });
+                }
+
+                const response = await fetch(`/api/calendar/${this.schedulingItem.id}/schedule`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scheduled_for: scheduledFor,
+                        auto_post: this.scheduleAutoPost
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Content scheduled', 'success');
+                    this.closeScheduleModal();
+                    this.loadQueue();
+                } else {
+                    const data = await response.json();
+                    showToast(data.detail || 'Failed to schedule', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to schedule', 'error');
+            }
+        },
+
+        async unscheduleItem(id) {
+            if (!confirm('Are you sure you want to unschedule this item? It will return to approved status.')) return;
+
+            try {
+                const response = await fetch(`/api/calendar/${id}/unschedule`, { method: 'POST' });
+                if (response.ok) {
+                    showToast('Item unscheduled', 'success');
+                    this.loadQueue();
+                } else {
+                    const data = await response.json();
+                    showToast(data.detail || 'Failed to unschedule', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to unschedule', 'error');
+            }
+        },
+
+        // Selection methods
+        isSelected(id) {
+            return this.selectedItems.includes(id);
+        },
+
+        toggleSelect(id) {
+            if (this.isSelected(id)) {
+                this.selectedItems = this.selectedItems.filter(i => i !== id);
+            } else {
+                this.selectedItems.push(id);
+            }
+        },
+
+        toggleSelectAll() {
+            if (this.allSelected) {
+                // Deselect all filtered items
+                this.selectedItems = this.selectedItems.filter(
+                    id => !this.filteredItems.map(i => i.id).includes(id)
+                );
+            } else {
+                // Select all filtered items
+                const filteredIds = this.filteredItems.map(i => i.id);
+                this.selectedItems = [...new Set([...this.selectedItems, ...filteredIds])];
+            }
+        },
+
+        clearSelection() {
+            this.selectedItems = [];
+        },
+
+        // Bulk actions
+        async bulkApprove() {
+            if (this.selectedItems.length === 0) return;
+            if (!confirm(`Approve ${this.selectedItems.length} item(s)?`)) return;
+
+            let success = 0;
+            let failed = 0;
+
+            for (const id of this.selectedItems) {
+                try {
+                    const response = await fetch(`/api/queue/${id}/approve`, { method: 'POST' });
+                    if (response.ok) {
+                        success++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    failed++;
+                }
+            }
+
+            this.selectedItems = [];
+            await this.loadQueue();
+
+            if (failed === 0) {
+                showToast(`Approved ${success} item(s)`, 'success');
+            } else {
+                showToast(`Approved ${success}, failed ${failed}`, 'warning');
+            }
+        },
+
+        async bulkReject() {
+            if (this.selectedItems.length === 0) return;
+            if (!confirm(`Reject ${this.selectedItems.length} item(s)?`)) return;
+
+            let success = 0;
+            let failed = 0;
+
+            for (const id of this.selectedItems) {
+                try {
+                    const response = await fetch(`/api/queue/${id}/reject`, { method: 'POST' });
+                    if (response.ok) {
+                        success++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    failed++;
+                }
+            }
+
+            this.selectedItems = [];
+            await this.loadQueue();
+
+            if (failed === 0) {
+                showToast(`Rejected ${success} item(s)`, 'success');
+            } else {
+                showToast(`Rejected ${success}, failed ${failed}`, 'warning');
+            }
+        },
+
+        async bulkDelete() {
+            if (this.selectedItems.length === 0) return;
+            if (!confirm(`Delete ${this.selectedItems.length} item(s)? This cannot be undone.`)) return;
+
+            let success = 0;
+            let failed = 0;
+
+            for (const id of this.selectedItems) {
+                try {
+                    const response = await fetch(`/api/queue/${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        success++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    failed++;
+                }
+            }
+
+            this.selectedItems = [];
+            await this.loadQueue();
+
+            if (failed === 0) {
+                showToast(`Deleted ${success} item(s)`, 'success');
+            } else {
+                showToast(`Deleted ${success}, failed ${failed}`, 'warning');
+            }
+        },
+
+        formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
+        }
+    }
+}
+</script>
+{% endblock %}

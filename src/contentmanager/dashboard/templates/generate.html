@@ -1,0 +1,599 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Content - Content Manager{% endblock %}
+{% block page_title %}Generate Content{% endblock %}
+
+{% block content %}
+<div x-data="generateData()" x-init="init()">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Generation Form -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold leading-6 text-gray-900">Create Educational Content</h3>
+                        <p class="mt-1 text-sm text-gray-500">Generate tweets, threads, or content about the SA Constitution</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <!-- Draft status indicator -->
+                        <span x-show="draftSaved" x-cloak class="text-xs text-green-600 flex items-center">
+                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Saved
+                        </span>
+                        <button x-show="draftLoaded || topic || sectionNums" @click="clearDraft(); topic=''; sectionNums=''"
+                                class="text-xs text-gray-500 hover:text-gray-700">
+                            Clear draft
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-6 space-y-4">
+                    <!-- Mode Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Generation Mode</label>
+                        <select x-model="mode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="user_provided">User Provided Topic</option>
+                            <option value="bot_proposed">Bot Suggested Topic</option>
+                            <option value="historical">Historical Event</option>
+                        </select>
+                    </div>
+
+                    <!-- Topic Input (for user_provided and historical) -->
+                    <div x-show="mode !== 'bot_proposed'">
+                        <label class="block text-sm font-medium text-gray-700">
+                            <span x-show="mode === 'user_provided'">Topic</span>
+                            <span x-show="mode === 'historical'">Historical Event</span>
+                        </label>
+                        <input type="text" x-model="topic" placeholder="e.g., Right to equality, Freedom of expression..."
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                    </div>
+
+                    <!-- Content Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Content Type</label>
+                        <div class="mt-2 flex flex-wrap gap-4">
+                            <label class="flex items-center">
+                                <input type="radio" x-model="contentType" value="tweet" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
+                                <span class="ml-2 text-sm text-gray-700">Single Tweet</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" x-model="contentType" value="thread" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
+                                <span class="ml-2 text-sm text-gray-700">Thread</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" x-model="contentType" value="script" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
+                                <span class="ml-2 text-sm text-gray-700">Dialog Script</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Thread Options -->
+                    <div x-show="contentType === 'thread'">
+                        <label class="block text-sm font-medium text-gray-700">Number of Tweets</label>
+                        <input type="number" x-model="numTweets" min="2" max="10"
+                               class="mt-1 block w-24 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                    </div>
+
+                    <!-- Script Options -->
+                    <div x-show="contentType === 'script'">
+                        <label class="block text-sm font-medium text-gray-700">Script Duration</label>
+                        <select x-model="scriptDuration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="1-2 minutes">Short (1-2 minutes)</option>
+                            <option value="2-3 minutes">Medium (2-3 minutes)</option>
+                            <option value="3-5 minutes">Long (3-5 minutes)</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Dialog scripts are conversations between characters explaining constitutional topics</p>
+                    </div>
+
+                    <!-- Specific Sections (optional) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Specific Sections (optional)</label>
+                        <input type="text" x-model="sectionNums" placeholder="e.g., 9, 10, 11"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                        <p class="mt-1 text-xs text-gray-500">Comma-separated section numbers to reference</p>
+                    </div>
+
+                    <!-- Language Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Language</label>
+                        <select x-model="language" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="en">English</option>
+                            <option value="af">Afrikaans</option>
+                            <option value="zu">isiZulu</option>
+                            <option value="xh">isiXhosa</option>
+                            <option value="nso">Sepedi (Northern Sotho)</option>
+                            <option value="tn">Setswana</option>
+                            <option value="st">Sesotho (Southern Sotho)</option>
+                            <option value="ts">Xitsonga</option>
+                            <option value="ss">siSwati</option>
+                            <option value="ve">Tshivenda</option>
+                            <option value="nr">isiNdebele</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Generate content in one of South Africa's 11 official languages</p>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="pt-4">
+                        <button @click="generate()" :disabled="generating || (mode !== 'bot_proposed' && !topic)"
+                                class="w-full inline-flex justify-center items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg x-show="generating" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="generating ? 'Generating...' : 'Generate Content'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-base font-semibold leading-6 text-gray-900">Preview</h3>
+
+                <!-- Empty State -->
+                <div x-show="!result && !generating" class="text-center py-12">
+                    <span class="text-4xl">✨</span>
+                    <p class="mt-2 text-sm text-gray-500">Generated content will appear here</p>
+                </div>
+
+                <!-- Loading State -->
+                <div x-show="generating" class="text-center py-12">
+                    <svg class="animate-spin h-8 w-8 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500">Generating content with AI...</p>
+                </div>
+
+                <!-- Result -->
+                <div x-show="result" class="mt-4 space-y-4">
+                    <!-- Topic and Language -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Topic</p>
+                            <p class="text-sm text-gray-900" x-text="result?.topic"></p>
+                        </div>
+                        <div x-show="result?.language && result?.language !== 'en'">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800"
+                                  x-text="getLanguageName(result?.language)"></span>
+                        </div>
+                    </div>
+
+                    <!-- Content -->
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Content</p>
+                        <div class="mt-2 p-3 bg-gray-50 rounded-md max-h-96 overflow-y-auto">
+                            <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="result?.formatted_content"></p>
+                        </div>
+                        <!-- Content metrics -->
+                        <div class="mt-2 flex flex-wrap gap-3 text-xs">
+                            <!-- Character count (for tweets) -->
+                            <span x-show="result?.content_type === 'tweet'"
+                                  :class="(result?.formatted_content?.length || 0) > 280 ? 'text-red-600 font-medium' : 'text-gray-500'">
+                                <span x-text="result?.formatted_content?.length || 0"></span>/280 characters
+                                <span x-show="(result?.formatted_content?.length || 0) > 280">⚠️ Over limit!</span>
+                            </span>
+                            <!-- Script metrics -->
+                            <template x-if="result?.content_type === 'script'">
+                                <div class="flex flex-wrap gap-3 w-full">
+                                    <span class="text-gray-500">
+                                        <span x-text="(result?.formatted_content || '').split(/\s+/).filter(w => w).length"></span> words
+                                    </span>
+                                    <span class="text-gray-500">
+                                        <span x-text="result?.formatted_content?.length || 0"></span> characters
+                                    </span>
+                                    <span class="text-gray-500">
+                                        ~<span x-text="Math.ceil((result?.formatted_content || '').split(/\s+/).filter(w => w).length / 150)"></span> min read time
+                                    </span>
+                                </div>
+                            </template>
+                            <!-- Thread metrics -->
+                            <span x-show="result?.content_type === 'thread'" class="text-gray-500">
+                                <span x-text="result?.formatted_content?.length || 0"></span> characters total
+                            </span>
+                        </div>
+                        <!-- Script length warnings -->
+                        <div x-show="result?.content_type === 'script'" class="mt-2">
+                            <!-- Too short warning -->
+                            <div x-show="(result?.formatted_content || '').split(/\s+/).filter(w => w).length < 100"
+                                 class="rounded-md bg-yellow-50 p-2 border border-yellow-200">
+                                <p class="text-xs text-yellow-700">
+                                    ⚠️ Script may be too short. Consider adding more dialogue for a fuller educational experience.
+                                </p>
+                            </div>
+                            <!-- Too long warning -->
+                            <div x-show="(result?.formatted_content || '').split(/\s+/).filter(w => w).length > 600"
+                                 class="rounded-md bg-yellow-50 p-2 border border-yellow-200">
+                                <p class="text-xs text-yellow-700">
+                                    ⚠️ Script is quite long (<span x-text="Math.ceil((result?.formatted_content || '').split(/\s+/).filter(w => w).length / 150)"></span>+ minutes). Consider splitting into multiple parts.
+                                </p>
+                            </div>
+                            <!-- Good length indicator -->
+                            <div x-show="(result?.formatted_content || '').split(/\s+/).filter(w => w).length >= 100 && (result?.formatted_content || '').split(/\s+/).filter(w => w).length <= 600"
+                                 class="rounded-md bg-green-50 p-2 border border-green-200">
+                                <p class="text-xs text-green-700">
+                                    ✓ Good script length for a <span x-text="Math.ceil((result?.formatted_content || '').split(/\s+/).filter(w => w).length / 150)"></span>-minute read.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Citations -->
+                    <div x-show="result?.citations?.length > 0">
+                        <p class="text-sm font-medium text-gray-500">Citations</p>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            <template x-for="citation in result?.citations" :key="citation.section_num">
+                                <span class="inline-flex items-center rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                                    Section <span x-text="citation.section_num"></span>
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Validation -->
+                    <div x-show="result?.validation_warnings?.length > 0 || result?.validation_errors?.length > 0">
+                        <p class="text-sm font-medium text-gray-500">Validation</p>
+                        <template x-for="error in result?.validation_errors">
+                            <p class="text-sm text-red-600">⚠️ <span x-text="error"></span></p>
+                        </template>
+                        <template x-for="warning in result?.validation_warnings">
+                            <p class="text-sm text-yellow-600">⚡ <span x-text="warning"></span></p>
+                        </template>
+                    </div>
+
+                    <!-- Duplicate Warning -->
+                    <div x-show="duplicateWarning" class="rounded-md bg-yellow-50 p-4 border border-yellow-200">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <h3 class="text-sm font-medium text-yellow-800">Similar content found</h3>
+                                <p class="mt-1 text-sm text-yellow-700" x-text="duplicateWarning?.message"></p>
+                                <div class="mt-2 space-y-2">
+                                    <template x-for="item in duplicateWarning?.similar_items" :key="item.id">
+                                        <div class="text-xs bg-yellow-100 rounded p-2">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span class="font-medium text-yellow-800" x-text="item.topic || 'Untitled'"></span>
+                                                <span class="text-yellow-600" x-text="Math.round(item.similarity_score * 100) + '% similar'"></span>
+                                            </div>
+                                            <p class="text-yellow-700 line-clamp-2" x-text="item.formatted_content"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                                <button @click="duplicateWarning = null" class="mt-2 text-sm text-yellow-600 hover:text-yellow-800 underline">
+                                    Dismiss warning
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Safety Warning -->
+                    <div x-show="safetyWarning" class="rounded-md p-4 border"
+                         :class="{
+                             'bg-red-50 border-red-200': safetyWarning?.is_blocked,
+                             'bg-orange-50 border-orange-200': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                             'bg-yellow-50 border-yellow-200': safetyWarning?.level === 'caution'
+                         }">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
+                                     :class="{
+                                         'text-red-400': safetyWarning?.is_blocked,
+                                         'text-orange-400': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                                         'text-yellow-400': safetyWarning?.level === 'caution'
+                                     }">
+                                    <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <h3 class="text-sm font-medium"
+                                    :class="{
+                                        'text-red-800': safetyWarning?.is_blocked,
+                                        'text-orange-800': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                                        'text-yellow-800': safetyWarning?.level === 'caution'
+                                    }">
+                                    <span x-show="safetyWarning?.is_blocked">Content Blocked</span>
+                                    <span x-show="safetyWarning?.needs_review && !safetyWarning?.is_blocked">Review Required</span>
+                                    <span x-show="safetyWarning?.level === 'caution'">Content Advisory</span>
+                                </h3>
+                                <div class="mt-1 text-sm"
+                                     :class="{
+                                         'text-red-700': safetyWarning?.is_blocked,
+                                         'text-orange-700': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                                         'text-yellow-700': safetyWarning?.level === 'caution'
+                                     }">
+                                    <p x-show="safetyWarning?.blocked_reason" x-text="safetyWarning?.blocked_reason"></p>
+                                    <template x-if="safetyWarning?.concerns?.length > 0">
+                                        <ul class="mt-2 list-disc list-inside space-y-1">
+                                            <template x-for="concern in safetyWarning?.concerns" :key="concern">
+                                                <li x-text="concern"></li>
+                                            </template>
+                                        </ul>
+                                    </template>
+                                </div>
+                                <button @click="safetyWarning = null" class="mt-2 text-sm underline"
+                                        :class="{
+                                            'text-red-600 hover:text-red-800': safetyWarning?.is_blocked,
+                                            'text-orange-600 hover:text-orange-800': safetyWarning?.needs_review && !safetyWarning?.is_blocked,
+                                            'text-yellow-600 hover:text-yellow-800': safetyWarning?.level === 'caution'
+                                        }">
+                                    Dismiss warning
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div x-show="result?.queue_id" class="rounded-md bg-green-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-green-800">Added to queue</p>
+                                <p class="text-sm text-green-700">Queue ID: <span x-text="result?.queue_id"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex space-x-2 pt-4">
+                        <button @click="generate()" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                            Regenerate
+                        </button>
+                        <a :href="'/queue'" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                            View in Queue
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topic Suggestions -->
+    <div class="mt-8 bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold leading-6 text-gray-900">Topic Suggestions</h3>
+                <button @click="getSuggestion()" :disabled="loadingSuggestion"
+                        class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50">
+                    <svg x-show="loadingSuggestion" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Get Suggestion
+                </button>
+            </div>
+
+            <div x-show="suggestion" class="mt-4 p-4 bg-gray-50 rounded-md">
+                <p class="text-sm font-medium text-gray-900" x-text="suggestion?.topic"></p>
+                <p class="mt-1 text-sm text-gray-500" x-text="suggestion?.angle"></p>
+                <p class="mt-1 text-sm text-gray-500" x-text="suggestion?.reason"></p>
+                <div class="mt-2 flex flex-wrap gap-1">
+                    <template x-for="num in suggestion?.section_nums" :key="num">
+                        <span class="inline-flex items-center rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                            Section <span x-text="num"></span>
+                        </span>
+                    </template>
+                </div>
+                <button @click="useSuggestion()" class="mt-4 inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                    Use This Topic
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateData() {
+    return {
+        mode: 'user_provided',
+        topic: '',
+        contentType: 'tweet',
+        numTweets: 5,
+        scriptDuration: '2-3 minutes',
+        sectionNums: '',
+        language: 'en',
+        generating: false,
+        result: null,
+        suggestion: null,
+        loadingSuggestion: false,
+        duplicateWarning: null,
+        safetyWarning: null,
+        draftSaved: false,
+        draftLoaded: false,
+
+        init() {
+            // Load draft from localStorage
+            this.loadDraft();
+
+            // Auto-save draft every 5 seconds when there are changes
+            setInterval(() => this.saveDraft(), 5000);
+
+            // Save draft when leaving page
+            window.addEventListener('beforeunload', () => this.saveDraft());
+        },
+
+        loadDraft() {
+            try {
+                const draft = localStorage.getItem('contentmanager_draft');
+                if (draft) {
+                    const data = JSON.parse(draft);
+                    if (data.topic || data.sectionNums) {
+                        this.mode = data.mode || 'user_provided';
+                        this.topic = data.topic || '';
+                        this.contentType = data.contentType || 'tweet';
+                        this.numTweets = data.numTweets || 5;
+                        this.scriptDuration = data.scriptDuration || '2-3 minutes';
+                        this.sectionNums = data.sectionNums || '';
+                        this.language = data.language || 'en';
+                        this.draftLoaded = true;
+                        showToast('Draft restored', 'info');
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load draft:', e);
+            }
+        },
+
+        saveDraft() {
+            if (!this.topic && !this.sectionNums) return;
+
+            try {
+                const draft = {
+                    mode: this.mode,
+                    topic: this.topic,
+                    contentType: this.contentType,
+                    numTweets: this.numTweets,
+                    scriptDuration: this.scriptDuration,
+                    sectionNums: this.sectionNums,
+                    language: this.language,
+                    savedAt: new Date().toISOString()
+                };
+                localStorage.setItem('contentmanager_draft', JSON.stringify(draft));
+                this.draftSaved = true;
+                setTimeout(() => this.draftSaved = false, 2000);
+            } catch (e) {
+                console.error('Failed to save draft:', e);
+            }
+        },
+
+        clearDraft() {
+            localStorage.removeItem('contentmanager_draft');
+            this.draftLoaded = false;
+            showToast('Draft cleared', 'info');
+        },
+
+        async generate() {
+            this.generating = true;
+            this.result = null;
+            this.duplicateWarning = null;
+            this.safetyWarning = null;
+
+            const payload = {
+                topic: this.mode === 'bot_proposed' ? 'Auto-generated topic' : this.topic,
+                content_type: this.contentType,
+                num_tweets: parseInt(this.numTweets),
+                duration: this.scriptDuration,
+                mode: this.mode,
+                language: this.language
+            };
+
+            if (this.sectionNums) {
+                payload.section_nums = this.sectionNums.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+            }
+
+            try {
+                const response = await fetch('/api/generate/topic?add_to_queue=true', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    this.result = await response.json();
+                    showToast('Content generated successfully', 'success');
+
+                    // Check for duplicates and safety issues in parallel
+                    await Promise.all([
+                        this.checkDuplicates(this.result.formatted_content),
+                        this.checkSafety(this.result.formatted_content)
+                    ]);
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Generation failed', 'error');
+                }
+            } catch (error) {
+                showToast('Generation failed', 'error');
+            }
+
+            this.generating = false;
+        },
+
+        async checkDuplicates(content) {
+            try {
+                const response = await fetch(`/api/queue/check-duplicates?content=${encodeURIComponent(content)}&threshold=0.4`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.has_duplicates && data.similar_items.length > 0) {
+                        this.duplicateWarning = data;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to check duplicates:', error);
+            }
+        },
+
+        async checkSafety(content) {
+            try {
+                const response = await fetch('/api/generate/safety-check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.is_safe) {
+                        this.safetyWarning = data;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to check safety:', error);
+            }
+        },
+
+        async getSuggestion() {
+            this.loadingSuggestion = true;
+            try {
+                const response = await fetch('/api/generate/suggest', { method: 'POST' });
+                if (response.ok) {
+                    this.suggestion = await response.json();
+                } else {
+                    showToast('Failed to get suggestion', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to get suggestion', 'error');
+            }
+            this.loadingSuggestion = false;
+        },
+
+        useSuggestion() {
+            if (this.suggestion) {
+                this.mode = 'user_provided';
+                this.topic = this.suggestion.topic;
+                this.sectionNums = this.suggestion.section_nums.join(', ');
+                this.suggestion = null;
+            }
+        },
+
+        getLanguageName(code) {
+            const names = {
+                'en': 'English',
+                'af': 'Afrikaans',
+                'zu': 'isiZulu',
+                'xh': 'isiXhosa',
+                'nso': 'Sepedi',
+                'tn': 'Setswana',
+                'st': 'Sesotho',
+                'ts': 'Xitsonga',
+                'ss': 'siSwati',
+                've': 'Tshivenda',
+                'nr': 'isiNdebele'
+            };
+            return names[code] || code;
+        }
+    }
+}
+</script>
+{% endblock %}

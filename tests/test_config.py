@@ -2,7 +2,7 @@
 
 import pytest
 
-from constitutionbot.config import Settings, get_settings
+from contentmanager.config import Settings, get_settings
 
 
 def test_settings_defaults():

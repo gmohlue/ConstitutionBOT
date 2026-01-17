@@ -1,0 +1,693 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Content Manager{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div x-data="settingsData()" x-init="loadSettings(); loadCredentials()">
+    <div class="space-y-8">
+        <!-- API Credentials -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">API Credentials</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage your Twitter and OpenAI API credentials</p>
+                    </div>
+                    <button @click="testCredentials()"
+                            :disabled="testing"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
+                        <svg x-show="testing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="testing ? 'Testing...' : 'Test Connection'"></span>
+                    </button>
+                </div>
+
+                <!-- Test Result -->
+                <div x-show="testResult" x-cloak class="mt-4">
+                    <div class="rounded-md p-4" :class="testResult?.success ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg x-show="testResult?.success" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                </svg>
+                                <svg x-show="!testResult?.success" class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium" :class="testResult?.success ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'" x-text="testResult?.message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form @submit.prevent="saveCredentials()" class="mt-6 space-y-6">
+                    <!-- Twitter Credentials -->
+                    <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-4">Twitter API</h4>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <!-- API Key -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">API Key (Consumer Key)</label>
+                                <div class="mt-1 relative">
+                                    <input :type="showPasswords.api_key ? 'text' : 'password'"
+                                           x-model="credentials.twitter_api_key"
+                                           :placeholder="credStatus.twitter_api_key?.masked_value || 'Enter API Key'"
+                                           class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm pr-10">
+                                    <button type="button" @click="showPasswords.api_key = !showPasswords.api_key" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <svg x-show="!showPasswords.api_key" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <svg x-show="showPasswords.api_key" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="mt-1 text-xs" :class="credStatus.twitter_api_key?.configured ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'" x-text="credStatus.twitter_api_key?.configured ? 'Configured' : 'Not configured'"></p>
+                            </div>
+
+                            <!-- API Secret -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">API Secret (Consumer Secret)</label>
+                                <div class="mt-1 relative">
+                                    <input :type="showPasswords.api_secret ? 'text' : 'password'"
+                                           x-model="credentials.twitter_api_secret"
+                                           :placeholder="credStatus.twitter_api_secret?.masked_value || 'Enter API Secret'"
+                                           class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm pr-10">
+                                    <button type="button" @click="showPasswords.api_secret = !showPasswords.api_secret" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <svg x-show="!showPasswords.api_secret" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <svg x-show="showPasswords.api_secret" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="mt-1 text-xs" :class="credStatus.twitter_api_secret?.configured ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'" x-text="credStatus.twitter_api_secret?.configured ? 'Configured' : 'Not configured'"></p>
+                            </div>
+
+                            <!-- Access Token -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Access Token</label>
+                                <div class="mt-1 relative">
+                                    <input :type="showPasswords.access_token ? 'text' : 'password'"
+                                           x-model="credentials.twitter_access_token"
+                                           :placeholder="credStatus.twitter_access_token?.masked_value || 'Enter Access Token'"
+                                           class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm pr-10">
+                                    <button type="button" @click="showPasswords.access_token = !showPasswords.access_token" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <svg x-show="!showPasswords.access_token" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <svg x-show="showPasswords.access_token" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="mt-1 text-xs" :class="credStatus.twitter_access_token?.configured ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'" x-text="credStatus.twitter_access_token?.configured ? 'Configured' : 'Not configured'"></p>
+                            </div>
+
+                            <!-- Access Secret -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Access Token Secret</label>
+                                <div class="mt-1 relative">
+                                    <input :type="showPasswords.access_secret ? 'text' : 'password'"
+                                           x-model="credentials.twitter_access_secret"
+                                           :placeholder="credStatus.twitter_access_secret?.masked_value || 'Enter Access Secret'"
+                                           class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm pr-10">
+                                    <button type="button" @click="showPasswords.access_secret = !showPasswords.access_secret" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <svg x-show="!showPasswords.access_secret" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <svg x-show="showPasswords.access_secret" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="mt-1 text-xs" :class="credStatus.twitter_access_secret?.configured ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'" x-text="credStatus.twitter_access_secret?.configured ? 'Configured' : 'Not configured'"></p>
+                            </div>
+
+                            <!-- Bearer Token -->
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bearer Token (Optional)</label>
+                                <div class="mt-1 relative">
+                                    <input :type="showPasswords.bearer_token ? 'text' : 'password'"
+                                           x-model="credentials.twitter_bearer_token"
+                                           :placeholder="credStatus.twitter_bearer_token?.masked_value || 'Enter Bearer Token'"
+                                           class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm pr-10">
+                                    <button type="button" @click="showPasswords.bearer_token = !showPasswords.bearer_token" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <svg x-show="!showPasswords.bearer_token" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <svg x-show="showPasswords.bearer_token" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="mt-1 text-xs" :class="credStatus.twitter_bearer_token?.configured ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'" x-text="credStatus.twitter_bearer_token?.configured ? 'Configured' : 'Not configured'"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OpenAI Credentials -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-4">OpenAI API</h4>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">API Key</label>
+                            <div class="mt-1 relative">
+                                <input :type="showPasswords.openai ? 'text' : 'password'"
+                                       x-model="credentials.openai_api_key"
+                                       :placeholder="credStatus.openai_api_key?.masked_value || 'Enter OpenAI API Key'"
+                                       class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm pr-10">
+                                <button type="button" @click="showPasswords.openai = !showPasswords.openai" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <svg x-show="!showPasswords.openai" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    <svg x-show="showPasswords.openai" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <p class="mt-1 text-xs" :class="credStatus.openai_api_key?.configured ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'" x-text="credStatus.openai_api_key?.configured ? 'Configured' : 'Not configured'"></p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit"
+                                :disabled="saving"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
+                            <svg x-show="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="saving ? 'Saving...' : 'Save Credentials'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Twitter Connection Status -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Connection Status</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Current Twitter API connection status</p>
+
+                <div class="mt-4">
+                    <div class="rounded-md p-4" :class="twitter.verified ? 'bg-green-50 dark:bg-green-900/30' : (twitter.configured ? 'bg-yellow-50 dark:bg-yellow-900/30' : 'bg-red-50 dark:bg-red-900/30')">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg x-show="twitter.verified" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                </svg>
+                                <svg x-show="twitter.configured && !twitter.verified" class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                </svg>
+                                <svg x-show="!twitter.configured" class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium" :class="twitter.verified ? 'text-green-800 dark:text-green-200' : (twitter.configured ? 'text-yellow-800 dark:text-yellow-200' : 'text-red-800 dark:text-red-200')">
+                                    <span x-show="twitter.verified">Connected</span>
+                                    <span x-show="twitter.configured && !twitter.verified">Configuration Issue</span>
+                                    <span x-show="!twitter.configured">Not Configured</span>
+                                </h3>
+                                <p class="text-sm" :class="twitter.verified ? 'text-green-700 dark:text-green-300' : (twitter.configured ? 'text-yellow-700 dark:text-yellow-300' : 'text-red-700 dark:text-red-300')">
+                                    <span x-show="twitter.verified">Twitter API is connected and ready to post.</span>
+                                    <span x-show="twitter.configured && !twitter.verified" x-text="twitter.error || 'Unable to verify credentials'"></span>
+                                    <span x-show="!twitter.configured">Configure API credentials above to connect.</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LLM Provider Settings -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">LLM Provider</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Select and configure your AI language model provider</p>
+                    </div>
+                    <button @click="testLLMProvider()"
+                            :disabled="testingLLM"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                        <svg x-show="testingLLM" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="testingLLM ? 'Testing...' : 'Test Connection'"></span>
+                    </button>
+                </div>
+
+                <!-- Test Result -->
+                <div x-show="llmTestResult" x-cloak class="mt-4">
+                    <div class="rounded-md p-4" :class="llmTestResult?.success ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg x-show="llmTestResult?.success" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                </svg>
+                                <svg x-show="!llmTestResult?.success" class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium" :class="llmTestResult?.success ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'" x-text="llmTestResult?.message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 space-y-6">
+                    <!-- Provider Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Active Provider</label>
+                        <select x-model="llmSettings.provider" @change="saveLLMSettings()"
+                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="anthropic">Anthropic Claude</option>
+                            <option value="openai">OpenAI GPT</option>
+                            <option value="ollama">Ollama (Local)</option>
+                        </select>
+                    </div>
+
+                    <!-- Provider-specific settings -->
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <!-- Anthropic Settings -->
+                        <div x-show="llmSettings.provider === 'anthropic'" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">Anthropic Claude</span>
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
+                                      :class="llmSettings.anthropic_configured ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'"
+                                      x-text="llmSettings.anthropic_configured ? 'API Key Configured' : 'API Key Missing'"></span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+                                <select x-model="llmSettings.anthropic_model" @change="saveLLMSettings()"
+                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                                    <template x-for="model in llmSettings.available_models?.anthropic || []" :key="model">
+                                        <option :value="model" x-text="model"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- OpenAI Settings -->
+                        <div x-show="llmSettings.provider === 'openai'" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">OpenAI GPT</span>
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
+                                      :class="llmSettings.openai_configured ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'"
+                                      x-text="llmSettings.openai_configured ? 'API Key Configured' : 'API Key Missing'"></span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+                                <select x-model="llmSettings.openai_model" @change="saveLLMSettings()"
+                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                                    <template x-for="model in llmSettings.available_models?.openai || []" :key="model">
+                                        <option :value="model" x-text="model"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Ollama Settings -->
+                        <div x-show="llmSettings.provider === 'ollama'" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">Ollama (Local)</span>
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
+                                      :class="llmSettings.ollama_available ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'"
+                                      x-text="llmSettings.ollama_available ? 'Server Available' : 'Server Unavailable'"></span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Host URL</label>
+                                <input type="text" x-model="llmSettings.ollama_host" @change="saveLLMSettings()"
+                                       placeholder="http://localhost:11434"
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+                                <div class="mt-1 flex space-x-2">
+                                    <select x-model="llmSettings.ollama_model" @change="saveLLMSettings()"
+                                            class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                                        <template x-for="model in ollamaModels" :key="model.name">
+                                            <option :value="model.name" x-text="model.name"></option>
+                                        </template>
+                                        <template x-if="ollamaModels.length === 0">
+                                            <template x-for="model in llmSettings.available_models?.ollama || []" :key="model">
+                                                <option :value="model" x-text="model"></option>
+                                            </template>
+                                        </template>
+                                    </select>
+                                    <button @click="loadOllamaModels()" type="button"
+                                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                        Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bot Settings -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Bot Settings</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Configure the Twitter bot behavior</p>
+
+                <div class="mt-6 space-y-6">
+                    <!-- Bot Enabled -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-gray-900 dark:text-white">Twitter Bot</label>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Enable automatic posting of approved content</p>
+                        </div>
+                        <button @click="settings.bot_enabled = !settings.bot_enabled; saveSettings()"
+                                :class="settings.bot_enabled ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'"
+                                class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                            <span :class="settings.bot_enabled ? 'translate-x-5' : 'translate-x-0'"
+                                  class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                        </button>
+                    </div>
+
+                    <!-- Auto Generate -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-gray-900 dark:text-white">Auto-Generate Content</label>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Automatically generate content suggestions</p>
+                        </div>
+                        <button @click="settings.auto_generate_enabled = !settings.auto_generate_enabled; saveSettings()"
+                                :class="settings.auto_generate_enabled ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'"
+                                class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                            <span :class="settings.auto_generate_enabled ? 'translate-x-5' : 'translate-x-0'"
+                                  class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                        </button>
+                    </div>
+
+                    <!-- Mention Check Interval -->
+                    <div>
+                        <label class="text-sm font-medium text-gray-900 dark:text-white">Mention Check Interval</label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">How often to check for new @mentions (seconds)</p>
+                        <input type="number" x-model="settings.mention_check_interval" @change="saveSettings()"
+                               min="30" max="3600"
+                               class="mt-2 block w-32 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                    </div>
+
+                    <!-- Auto Generate Interval -->
+                    <div>
+                        <label class="text-sm font-medium text-gray-900 dark:text-white">Auto-Generate Interval</label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">How often to generate new content (seconds)</p>
+                        <input type="number" x-model="settings.auto_generate_interval" @change="saveSettings()"
+                               min="300" max="86400"
+                               class="mt-2 block w-32 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Settings -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Content Settings</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Configure content generation defaults</p>
+
+                <div class="mt-6 space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-900 dark:text-white">Max Tweet Length</label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" x-text="settings.max_tweet_length + ' characters'"></p>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-900 dark:text-white">Max Thread Tweets</label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" x-text="settings.max_thread_tweets + ' tweets'"></p>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-900 dark:text-white">Default Hashtags</label>
+                        <div class="mt-1 flex flex-wrap gap-1">
+                            <template x-for="tag in settings.default_hashtags" :key="tag">
+                                <span class="inline-flex items-center rounded-md bg-green-50 dark:bg-green-900/30 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-300" x-text="tag"></span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function settingsData() {
+    return {
+        settings: {
+            bot_enabled: false,
+            mention_check_interval: 60,
+            auto_generate_enabled: false,
+            auto_generate_interval: 3600,
+            max_tweet_length: 280,
+            max_thread_tweets: 10,
+            default_hashtags: []
+        },
+        twitter: {
+            configured: false,
+            verified: false,
+            error: null,
+            credentials: {}
+        },
+        credentials: {
+            twitter_api_key: '',
+            twitter_api_secret: '',
+            twitter_access_token: '',
+            twitter_access_secret: '',
+            twitter_bearer_token: '',
+            openai_api_key: ''
+        },
+        credStatus: {
+            twitter_api_key: { configured: false, masked_value: null },
+            twitter_api_secret: { configured: false, masked_value: null },
+            twitter_access_token: { configured: false, masked_value: null },
+            twitter_access_secret: { configured: false, masked_value: null },
+            twitter_bearer_token: { configured: false, masked_value: null },
+            openai_api_key: { configured: false, masked_value: null }
+        },
+        showPasswords: {
+            api_key: false,
+            api_secret: false,
+            access_token: false,
+            access_secret: false,
+            bearer_token: false,
+            openai: false
+        },
+        llmSettings: {
+            provider: 'anthropic',
+            anthropic_model: 'claude-sonnet-4-20250514',
+            anthropic_configured: false,
+            openai_model: 'gpt-4o',
+            openai_configured: false,
+            ollama_host: 'http://localhost:11434',
+            ollama_model: 'llama3.2',
+            ollama_available: false,
+            available_models: {}
+        },
+        ollamaModels: [],
+        testingLLM: false,
+        llmTestResult: null,
+        saving: false,
+        testing: false,
+        testResult: null,
+
+        async loadSettings() {
+            try {
+                const [settingsRes, twitterRes, llmRes] = await Promise.all([
+                    fetch('/api/settings'),
+                    fetch('/api/settings/twitter-status'),
+                    fetch('/api/settings/llm')
+                ]);
+
+                if (settingsRes.ok) {
+                    this.settings = await settingsRes.json();
+                }
+                if (twitterRes.ok) {
+                    this.twitter = await twitterRes.json();
+                }
+                if (llmRes.ok) {
+                    this.llmSettings = await llmRes.json();
+                }
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        },
+
+        async loadCredentials() {
+            try {
+                const response = await fetch('/api/settings/credentials');
+                if (response.ok) {
+                    this.credStatus = await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to load credentials status:', error);
+            }
+        },
+
+        async saveCredentials() {
+            this.saving = true;
+            try {
+                // Only send non-empty credentials
+                const payload = {};
+                for (const [key, value] of Object.entries(this.credentials)) {
+                    if (value && value.trim()) {
+                        payload[key] = value.trim();
+                    }
+                }
+
+                if (Object.keys(payload).length === 0) {
+                    showToast('No credentials to save', 'warning');
+                    this.saving = false;
+                    return;
+                }
+
+                const response = await fetch('/api/settings/credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    // Clear input fields after saving
+                    this.credentials = {
+                        twitter_api_key: '',
+                        twitter_api_secret: '',
+                        twitter_access_token: '',
+                        twitter_access_secret: '',
+                        twitter_bearer_token: '',
+                        openai_api_key: ''
+                    };
+                    // Reload credentials status
+                    await this.loadCredentials();
+                    await this.loadSettings();
+                } else {
+                    showToast(result.message || 'Failed to save credentials', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to save credentials', 'error');
+            }
+            this.saving = false;
+        },
+
+        async testCredentials() {
+            this.testing = true;
+            this.testResult = null;
+            try {
+                const response = await fetch('/api/settings/credentials/test', {
+                    method: 'POST'
+                });
+                this.testResult = await response.json();
+
+                if (this.testResult.success) {
+                    // Refresh Twitter status
+                    await this.loadSettings();
+                }
+            } catch (error) {
+                this.testResult = { success: false, message: 'Failed to test credentials' };
+            }
+            this.testing = false;
+        },
+
+        async saveSettings() {
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bot_enabled: this.settings.bot_enabled,
+                        mention_check_interval: parseInt(this.settings.mention_check_interval),
+                        auto_generate_enabled: this.settings.auto_generate_enabled,
+                        auto_generate_interval: parseInt(this.settings.auto_generate_interval)
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Settings saved', 'success');
+                } else {
+                    showToast('Failed to save settings', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to save settings', 'error');
+            }
+        },
+
+        async saveLLMSettings() {
+            try {
+                const response = await fetch('/api/settings/llm', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        provider: this.llmSettings.provider,
+                        anthropic_model: this.llmSettings.anthropic_model,
+                        openai_model: this.llmSettings.openai_model,
+                        ollama_host: this.llmSettings.ollama_host,
+                        ollama_model: this.llmSettings.ollama_model
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('LLM settings saved', 'success');
+                } else {
+                    showToast('Failed to save LLM settings', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to save LLM settings', 'error');
+            }
+        },
+
+        async testLLMProvider() {
+            this.testingLLM = true;
+            this.llmTestResult = null;
+            try {
+                const response = await fetch('/api/settings/llm/test', {
+                    method: 'POST'
+                });
+                this.llmTestResult = await response.json();
+            } catch (error) {
+                this.llmTestResult = { success: false, message: 'Failed to test LLM provider' };
+            }
+            this.testingLLM = false;
+        },
+
+        async loadOllamaModels() {
+            try {
+                const response = await fetch('/api/settings/llm/ollama/models');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        this.ollamaModels = data.models;
+                        showToast(`Found ${data.models.length} Ollama models`, 'success');
+                    } else {
+                        showToast(data.error || 'Failed to load Ollama models', 'error');
+                    }
+                }
+            } catch (error) {
+                showToast('Failed to load Ollama models', 'error');
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

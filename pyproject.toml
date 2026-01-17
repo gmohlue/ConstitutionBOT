@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "constitutionbot"
+name = "contentmanager"
 version = "0.1.0"
-description = "Civic Education Assistant for the South African Constitution (1996)"
+description = "Content Manager - AI-powered content generation for any document"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-    { name = "ConstitutionBOT Team" }
+    { name = "Content Manager Team" }
 ]
 dependencies = [
     # Core
@@ -52,10 +52,10 @@ dev = [
 ]
 
 [project.scripts]
-constitutionbot = "constitutionbot.cli.main:main"
+contentmanager = "contentmanager.cli.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/constitutionbot"]
+packages = ["src/contentmanager"]
 
 [tool.ruff]
 line-length = 100
