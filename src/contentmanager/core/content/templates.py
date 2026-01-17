@@ -722,3 +722,118 @@ TWEET 2: [content]
             persona_description=persona_description,
             **params,
         )
+
+    # ========================================================================
+    # CONCEPT-BASED SYNTHESIS PROMPTS - For topics without direct document matches
+    # ========================================================================
+
+    CONCEPT_SYNTHESIS_TWEET_PROMPT = """Create an educational tweet about how {document_short_name} relates to {topic}.
+
+== CONCEPTUAL FRAMEWORK ==
+{concept_context}
+
+== YOUR TASK ==
+Think critically about how constitutional principles apply to this topic:
+1. Which rights or values are most relevant?
+2. How do these principles protect people in this context?
+3. What's a fresh angle that isn't immediately obvious?
+
+== FORMAT REQUIREMENTS ==
+- Maximum 280 characters
+- Reference at least one relevant section (e.g., "Section 9", "Section 10")
+- Include 1 relevant hashtag
+- NO legal advice
+
+== WRITING STYLE ==
+Voice: {persona_description}
+
+DO NOT:
+- Ask for more information or say the text wasn't provided
+- Start with "It's important to note" or AI cliches
+- Be vague or abstract - be specific
+- Just define the topic - make a point about it
+
+DO:
+- Connect the topic to specific constitutional protections
+- Offer a perspective that makes people think
+- Use concrete language
+- Sound like an insightful person, not a textbook
+
+Generate only the tweet text, nothing else."""
+
+    CONCEPT_SYNTHESIS_THREAD_PROMPT = """Create an educational Twitter thread about how {document_short_name} relates to {topic}.
+
+== CONCEPTUAL FRAMEWORK ==
+{concept_context}
+
+== YOUR TASK ==
+Think critically and creatively about this topic:
+1. How do constitutional principles apply here?
+2. What do most people not realize about this connection?
+3. What's the practical impact on people's lives?
+4. What perspective can you offer that sparks thought?
+
+== FORMAT REQUIREMENTS ==
+- Create {num_tweets} connected tweets (280 chars max each)
+- Reference relevant sections throughout
+- Include hashtags only in the final tweet
+- NO legal advice
+
+== WRITING STYLE ==
+Voice: {persona_description}
+Thread structure: {thread_structure}
+
+DO NOT:
+- Ask for more information or document text
+- Start with "Thread:" or "Did you know"
+- Use AI cliches like "delve", "unpack", "crucial"
+- Be abstract - use concrete examples
+
+DO:
+- Build a compelling narrative
+- Connect constitutional principles to real situations
+- Offer insights that aren't immediately obvious
+- End with something thought-provoking
+
+Format your response as:
+TWEET 1: [content]
+TWEET 2: [content]
+...and so on"""
+
+    @classmethod
+    def get_concept_tweet_prompt(
+        cls,
+        topic: str,
+        concept_context: str,
+        persona_description: str = "conversational and thoughtful",
+        doc_context: Optional[DocumentContext] = None,
+    ) -> str:
+        """Get formatted concept-based tweet synthesis prompt."""
+        params = cls._get_doc_params(doc_context)
+        return cls.CONCEPT_SYNTHESIS_TWEET_PROMPT.format(
+            topic=topic,
+            concept_context=concept_context,
+            persona_description=persona_description,
+            **params,
+        )
+
+    @classmethod
+    def get_concept_thread_prompt(
+        cls,
+        topic: str,
+        concept_context: str,
+        num_tweets: int = 5,
+        thread_structure: str = "progressive revelation",
+        persona_description: str = "conversational and thoughtful",
+        doc_context: Optional[DocumentContext] = None,
+    ) -> str:
+        """Get formatted concept-based thread synthesis prompt."""
+        params = cls._get_doc_params(doc_context)
+        return cls.CONCEPT_SYNTHESIS_THREAD_PROMPT.format(
+            topic=topic,
+            concept_context=concept_context,
+            num_tweets=num_tweets,
+            thread_structure=thread_structure,
+            persona_description=persona_description,
+            **params,
+        )

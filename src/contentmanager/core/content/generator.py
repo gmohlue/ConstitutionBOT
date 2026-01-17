@@ -20,6 +20,7 @@ from contentmanager.core.content.synthesis import SynthesisEngine, SynthesisMode
 from contentmanager.core.content.scenarios import ScenarioGenerator, Scenario
 from contentmanager.core.content.persona_writer import PersonaWriter, WritingPersona, PERSONAS
 from contentmanager.core.content.prompt_variants import PromptVariants
+from contentmanager.core.content.concept_mapper import ConceptMapper
 
 
 @dataclass
@@ -84,6 +85,7 @@ class ContentGenerator:
         self.ai_filter = AIPatternFilter()
         self.scenario_generator = ScenarioGenerator()
         self.prompt_variants = PromptVariants()
+        self.concept_mapper = ConceptMapper()
 
         # Synthesis settings
         self.default_synthesis_mode = default_synthesis_mode
@@ -220,6 +222,18 @@ class ContentGenerator:
         # Format context
         context = await self.retriever.format_multiple_sections(sections) if sections else ""
 
+        # If no direct sections found, try concept-based synthesis
+        if not sections and not context:
+            concept_context = self.concept_mapper.build_context_for_synthesis(topic)
+            if concept_context:
+                # Use concept-based generation
+                return await self._generate_concept_tweet(
+                    topic=topic,
+                    concept_context=concept_context,
+                    doc_context=doc_context,
+                    mode=mode,
+                )
+
         # Generate content
         prompt = PromptTemplates.get_tweet_prompt(
             topic=topic,
@@ -277,6 +291,19 @@ class ContentGenerator:
 
         # Format context
         context = await self.retriever.format_multiple_sections(sections) if sections else ""
+
+        # If no direct sections found, try concept-based synthesis
+        if not sections and not context:
+            concept_context = self.concept_mapper.build_context_for_synthesis(topic)
+            if concept_context:
+                # Use concept-based generation
+                return await self._generate_concept_thread(
+                    topic=topic,
+                    concept_context=concept_context,
+                    num_tweets=num_tweets,
+                    doc_context=doc_context,
+                    mode=mode,
+                )
 
         # Generate content
         prompt = PromptTemplates.get_thread_prompt(
@@ -556,6 +583,198 @@ class ContentGenerator:
         return citations
 
     # ========================================================================
+    # CONCEPT-BASED GENERATION - For topics without direct document matches
+    # ========================================================================
+
+    async def _generate_concept_tweet(
+        self,
+        topic: str,
+        concept_context: str,
+        doc_context: DocumentContext,
+        mode: str = "user_provided",
+    ) -> GeneratedContent:
+        """Generate a tweet using concept-based synthesis.
+
+        Used when no direct document sections match the topic, but we can
+        map it to constitutional principles conceptually.
+        """
+        # Get persona
+        persona_obj = self.persona_writer.get_persona(self.default_persona)
+        persona_description = persona_obj.to_prompt_description() if persona_obj else "conversational"
+
+        # Generate with concept prompt
+        prompt = PromptTemplates.get_concept_tweet_prompt(
+            topic=topic,
+            concept_context=concept_context,
+            persona_description=persona_description,
+            doc_context=doc_context,
+        )
+
+        llm = await self._get_llm()
+        raw_content = llm.generate(
+            prompt=prompt,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
+            temperature=0.8,  # Higher for creative synthesis
+        )
+
+        # Apply humanization if needed
+        formatted = raw_content.strip()
+        humanization_applied = False
+        ai_score = 0.0
+
+        for attempt in range(self.humanization_retries + 1):
+            is_human_like, report = self.ai_filter.validate_human_likeness(
+                formatted, self.ai_pattern_threshold
+            )
+            ai_score = report.ai_score
+
+            if is_human_like:
+                break
+
+            result = self.persona_writer.humanize_content(formatted, persona_obj)
+            formatted = result.transformed
+            humanization_applied = True
+
+            if attempt < self.humanization_retries:
+                formatted = self.ai_filter.humanize(formatted)
+
+        # Parse and format
+        tweet = self.formatter.parse_tweet(formatted)
+        final_content = self.formatter.format_tweet_for_posting(tweet)
+        final_content = self.formatter.add_hashtags(final_content, doc_context.default_hashtags)
+
+        # Validate
+        validation = self.validator.validate_with_ai_check(
+            final_content, "tweet", self.ai_pattern_threshold
+        )
+
+        # Build citations from concept mapping
+        mapping = self.concept_mapper.map_topic(topic)
+        citations = []
+        if mapping:
+            for section_num in mapping.section_references:
+                citations.append({
+                    "section_num": section_num,
+                    "section_title": f"Related to {topic}",
+                    "chapter_num": None,
+                    "chapter_title": None,
+                })
+
+        return GeneratedContent(
+            content_type="tweet",
+            raw_content=raw_content,
+            formatted_content=final_content,
+            topic=topic,
+            citations=citations,
+            validation=validation,
+            mode=mode,
+            synthesis_mode="CONCEPT",
+            ai_score=ai_score,
+            persona_used=self.default_persona,
+            humanization_applied=humanization_applied,
+        )
+
+    async def _generate_concept_thread(
+        self,
+        topic: str,
+        concept_context: str,
+        num_tweets: int,
+        doc_context: DocumentContext,
+        mode: str = "user_provided",
+    ) -> GeneratedContent:
+        """Generate a thread using concept-based synthesis.
+
+        Used when no direct document sections match the topic, but we can
+        map it to constitutional principles conceptually.
+        """
+        # Get persona and thread structure
+        persona_obj = self.persona_writer.get_persona(self.default_persona)
+        persona_description = persona_obj.to_prompt_description() if persona_obj else "conversational"
+        thread_config = self.prompt_variants.get_thread_structure()
+        thread_structure = thread_config.get("tone", "progressive revelation")
+
+        # Generate with concept prompt
+        prompt = PromptTemplates.get_concept_thread_prompt(
+            topic=topic,
+            concept_context=concept_context,
+            num_tweets=num_tweets,
+            thread_structure=thread_structure,
+            persona_description=persona_description,
+            doc_context=doc_context,
+        )
+
+        llm = await self._get_llm()
+        raw_content = llm.generate(
+            prompt=prompt,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
+            temperature=0.8,
+            max_tokens=2000,
+        )
+
+        # Parse thread
+        thread = self.formatter.parse_thread(raw_content, topic=topic)
+
+        # Humanize each tweet
+        humanization_applied = False
+        total_ai_score = 0.0
+
+        for tweet in thread.tweets:
+            formatted = tweet.content
+
+            for attempt in range(self.humanization_retries + 1):
+                is_human_like, report = self.ai_filter.validate_human_likeness(
+                    formatted, self.ai_pattern_threshold
+                )
+                total_ai_score += report.ai_score
+
+                if is_human_like:
+                    break
+
+                result = self.persona_writer.humanize_content(formatted, persona_obj)
+                formatted = result.transformed
+                humanization_applied = True
+
+                if attempt < self.humanization_retries:
+                    formatted = self.ai_filter.humanize(formatted)
+
+            tweet.content = formatted
+
+        avg_ai_score = total_ai_score / len(thread.tweets) if thread.tweets else 0.0
+
+        # Format for posting
+        formatted_tweets = self.formatter.format_thread_for_posting(thread)
+        formatted = thread.format_for_storage()
+
+        # Validate
+        validation = self.validator.validate_thread(formatted_tweets)
+
+        # Build citations from concept mapping
+        mapping = self.concept_mapper.map_topic(topic)
+        citations = []
+        if mapping:
+            for section_num in mapping.section_references:
+                citations.append({
+                    "section_num": section_num,
+                    "section_title": f"Related to {topic}",
+                    "chapter_num": None,
+                    "chapter_title": None,
+                })
+
+        return GeneratedContent(
+            content_type="thread",
+            raw_content=raw_content,
+            formatted_content=formatted,
+            topic=topic,
+            citations=citations,
+            validation=validation,
+            mode=mode,
+            synthesis_mode="CONCEPT",
+            ai_score=avg_ai_score,
+            persona_used=self.default_persona,
+            humanization_applied=humanization_applied,
+        )
+
+    # ========================================================================
     # SYNTHESIS METHODS - Intelligent content synthesis pipeline
     # ========================================================================
 
@@ -603,7 +822,16 @@ class ContentGenerator:
             sections = await self.retriever.get_sections_for_topic(topic, limit=3)
 
         if not sections:
-            # Fall back to standard generation if no sections found
+            # Try concept-based synthesis if no sections found
+            concept_context = self.concept_mapper.build_context_for_synthesis(topic)
+            if concept_context:
+                return await self._generate_concept_tweet(
+                    topic=topic,
+                    concept_context=concept_context,
+                    doc_context=doc_context,
+                    mode=mode,
+                )
+            # Fall back to standard generation only if no concept mapping exists
             return await self.generate_tweet(topic, mode, section_nums)
 
         # Step 1: Analyze sections for insights
@@ -736,6 +964,16 @@ class ContentGenerator:
             sections = await self.retriever.get_sections_for_topic(topic, limit=5)
 
         if not sections:
+            # Try concept-based synthesis if no sections found
+            concept_context = self.concept_mapper.build_context_for_synthesis(topic)
+            if concept_context:
+                return await self._generate_concept_thread(
+                    topic=topic,
+                    concept_context=concept_context,
+                    num_tweets=num_tweets,
+                    doc_context=doc_context,
+                    mode=mode,
+                )
             return await self.generate_thread(topic, num_tweets, mode, section_nums)
 
         # Analyze sections for insights
