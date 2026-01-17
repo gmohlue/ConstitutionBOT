@@ -300,3 +300,21 @@ class ConversationMessage(Base):
 
     def __repr__(self) -> str:
         return f"<ConversationMessage(id={self.id}, role={self.role}, conversation_id={self.conversation_id})>"
+
+
+class Session(Base):
+    """User session for dashboard authentication."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<Session(id={self.id}, expires_at={self.expires_at})>"

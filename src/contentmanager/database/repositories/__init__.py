@@ -12,6 +12,7 @@ from contentmanager.database.repositories.document import (
 )
 from contentmanager.database.repositories.post_history import PostHistoryRepository
 from contentmanager.database.repositories.reply_queue import ReplyQueueRepository
+from contentmanager.database.repositories.session import SessionRepository
 
 __all__ = [
     "ContentQueueRepository",
@@ -22,4 +23,5 @@ __all__ = [
     "PostHistoryRepository",
     "ConversationRepository",
     "MessageRepository",
+    "SessionRepository",
 ]

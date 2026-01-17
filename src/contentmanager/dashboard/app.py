@@ -7,6 +7,7 @@ from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from contentmanager.config import get_settings
 from contentmanager.dashboard.auth import (
@@ -26,7 +27,7 @@ from contentmanager.dashboard.routers import (
     settings_router,
     suggestions_router,
 )
-from contentmanager.database import init_db
+from contentmanager.database import get_session, init_db
 
 
 @asynccontextmanager
@@ -102,11 +103,12 @@ def create_app() -> FastAPI:
         username: str = Form(...),
         password: str = Form(...),
         next: str = Form("/"),
+        db_session: AsyncSession = Depends(get_session),
     ):
         """Handle login form submission."""
         response = RedirectResponse(url=next, status_code=303)
 
-        if login_user(response, username, password):
+        if await login_user(response, username, password, db_session, request):
             return response
 
         # Login failed
@@ -118,10 +120,11 @@ def create_app() -> FastAPI:
     @app.get("/logout")
     async def logout(
         session_token: str = Depends(get_current_session),
+        db_session: AsyncSession = Depends(get_session),
     ):
         """Log out the user."""
         response = RedirectResponse(url="/login", status_code=303)
-        logout_user(response, session_token)
+        await logout_user(response, db_session, session_token)
         return response
 
     @app.get("/queue", response_class=HTMLResponse)

@@ -5,17 +5,18 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from contentmanager.config import get_settings
+from contentmanager.database import get_session
+from contentmanager.database.repositories.session import SessionRepository
 
 
 class AuthManager:
-    """Simple session-based authentication for the dashboard."""
+    """Session-based authentication for the dashboard using database storage."""
 
     def __init__(self):
         self.settings = get_settings()
-        self._sessions: dict[str, datetime] = {}
         self._session_duration = timedelta(hours=24)
 
     def verify_credentials(self, username: str, password: str) -> bool:
@@ -25,40 +26,44 @@ class AuthManager:
             and password == self.settings.dashboard_password.get_secret_value()
         )
 
-    def create_session(self) -> str:
+    async def create_session(
+        self,
+        db_session: AsyncSession,
+        user_agent: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> str:
         """Create a new session and return the session token."""
         token = secrets.token_urlsafe(32)
-        self._sessions[token] = datetime.utcnow()
-        self._cleanup_expired_sessions()
+        expires_at = datetime.utcnow() + self._session_duration
+
+        repo = SessionRepository(db_session)
+        await repo.create(
+            token=token,
+            expires_at=expires_at,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+        # Cleanup expired sessions periodically
+        await repo.delete_expired()
+        await db_session.commit()
+
         return token
 
-    def verify_session(self, token: Optional[str]) -> bool:
+    async def verify_session(self, db_session: AsyncSession, token: Optional[str]) -> bool:
         """Verify if a session token is valid."""
-        if not token or token not in self._sessions:
+        if not token:
             return False
 
-        created_at = self._sessions[token]
-        if datetime.utcnow() - created_at > self._session_duration:
-            del self._sessions[token]
-            return False
+        repo = SessionRepository(db_session)
+        is_valid = await repo.is_valid(token)
+        await db_session.commit()
+        return is_valid
 
-        return True
-
-    def destroy_session(self, token: str) -> None:
+    async def destroy_session(self, db_session: AsyncSession, token: str) -> None:
         """Destroy a session."""
-        if token in self._sessions:
-            del self._sessions[token]
-
-    def _cleanup_expired_sessions(self) -> None:
-        """Remove expired sessions."""
-        now = datetime.utcnow()
-        expired = [
-            token
-            for token, created_at in self._sessions.items()
-            if now - created_at > self._session_duration
-        ]
-        for token in expired:
-            del self._sessions[token]
+        repo = SessionRepository(db_session)
+        await repo.delete_by_token(token)
+        await db_session.commit()
 
 
 # Global auth manager instance
@@ -83,6 +88,7 @@ async def get_current_session(
 async def require_auth(
     request: Request,
     session_token: Optional[str] = Depends(get_current_session),
+    db_session: AsyncSession = Depends(get_session),
 ) -> str:
     """Dependency that requires authentication.
 
@@ -91,7 +97,7 @@ async def require_auth(
     """
     auth = get_auth_manager()
 
-    if not auth.verify_session(session_token):
+    if not await auth.verify_session(db_session, session_token):
         # Check if this is an API request or page request
         if request.url.path.startswith("/api/"):
             raise HTTPException(
@@ -110,19 +116,28 @@ async def require_auth(
 
 async def optional_auth(
     session_token: Optional[str] = Depends(get_current_session),
+    db_session: AsyncSession = Depends(get_session),
 ) -> bool:
     """Dependency that checks auth but doesn't require it."""
     auth = get_auth_manager()
-    return auth.verify_session(session_token)
+    return await auth.verify_session(db_session, session_token)
 
 
-def login_user(response: Response, username: str, password: str) -> bool:
+async def login_user(
+    response: Response,
+    username: str,
+    password: str,
+    db_session: AsyncSession,
+    request: Optional[Request] = None,
+) -> bool:
     """Attempt to log in a user.
 
     Args:
         response: The response object to set cookies on
         username: The username
         password: The password
+        db_session: Database session for storing the session
+        request: Optional request to extract user agent and IP
 
     Returns:
         True if login successful, False otherwise
@@ -132,7 +147,17 @@ def login_user(response: Response, username: str, password: str) -> bool:
     if not auth.verify_credentials(username, password):
         return False
 
-    token = auth.create_session()
+    user_agent = None
+    ip_address = None
+    if request:
+        user_agent = request.headers.get("user-agent")
+        ip_address = request.client.host if request.client else None
+
+    token = await auth.create_session(
+        db_session,
+        user_agent=user_agent,
+        ip_address=ip_address,
+    )
     response.set_cookie(
         key="session",
         value=token,
@@ -146,11 +171,15 @@ def login_user(response: Response, username: str, password: str) -> bool:
     return True
 
 
-def logout_user(response: Response, session_token: Optional[str] = None) -> None:
+async def logout_user(
+    response: Response,
+    db_session: AsyncSession,
+    session_token: Optional[str] = None,
+) -> None:
     """Log out the current user."""
     auth = get_auth_manager()
 
     if session_token:
-        auth.destroy_session(session_token)
+        await auth.destroy_session(db_session, session_token)
 
     response.delete_cookie(key="session")
