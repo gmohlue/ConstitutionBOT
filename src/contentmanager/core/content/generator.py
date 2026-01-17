@@ -527,12 +527,16 @@ class ContentGenerator:
             temperature=0.7,
         )
 
-        # Parse and format
-        tweet = self.formatter.parse_tweet(raw_content)
-        formatted = self.formatter.format_tweet_for_posting(tweet)
+        # Clean up the content but don't truncate
+        # External tweet replies should be full length, not limited to 280 chars
+        formatted = raw_content.strip()
 
-        # Validate as reply
-        validation = self.validator.validate_reply(formatted, tweet_text)
+        # Build validation info (without enforcing character limits)
+        validation = ValidationResult(
+            is_valid=True,
+            warnings=[],
+            errors=[],
+        )
 
         # Build citations
         citations = self._build_citations(sections)

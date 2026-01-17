@@ -547,6 +547,85 @@ TOPIC_CONCEPT_MAP: dict[str, ConceptMapping] = {
             "Worker strikes", "Political demonstrations"
         ]
     ),
+    "correctional services": ConceptMapping(
+        topic="correctional services",
+        principles=[
+            ConstitutionalPrinciple.ARRESTED_PERSONS,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.FAIR_TRIAL,
+            ConstitutionalPrinciple.SECURITY_OF_PERSON,
+        ],
+        section_references=[35, 10, 12, 34],
+        key_concepts=[
+            "rights of detained persons", "right to humane conditions",
+            "right to communicate with legal practitioner", "right to challenge detention",
+            "presumption of innocence", "right to a fair trial"
+        ],
+        perspective_angles=[
+            "Section 35 protects the rights of arrested, detained, and accused persons",
+            "Detained persons retain their human dignity",
+            "The right to humane conditions of detention",
+            "Rehabilitation vs punishment in correctional services",
+            "Access to legal representation as a fundamental right"
+        ],
+        real_world_connections=[
+            "Prison overcrowding", "Awaiting-trial detainees",
+            "Conditions in correctional facilities", "Parole and rehabilitation",
+            "Treatment of remand detainees", "Access to healthcare in prisons"
+        ]
+    ),
+    "prisons": ConceptMapping(
+        topic="prisons",
+        principles=[
+            ConstitutionalPrinciple.ARRESTED_PERSONS,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.FAIR_TRIAL,
+            ConstitutionalPrinciple.SECURITY_OF_PERSON,
+        ],
+        section_references=[35, 10, 12, 34],
+        key_concepts=[
+            "rights of detained persons", "humane detention conditions",
+            "rehabilitation", "dignity in incarceration",
+            "access to medical treatment", "contact with family"
+        ],
+        perspective_angles=[
+            "Prisoners retain fundamental human rights",
+            "Section 35(2) specifically protects detained persons",
+            "The constitutional requirement for humane treatment",
+            "Balancing security with human rights in detention"
+        ],
+        real_world_connections=[
+            "Prison conditions", "Deaths in custody",
+            "Rehabilitation programs", "Prison healthcare",
+            "Rights of sentenced vs awaiting-trial prisoners"
+        ]
+    ),
+    "detention": ConceptMapping(
+        topic="detention",
+        principles=[
+            ConstitutionalPrinciple.ARRESTED_PERSONS,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.SECURITY_OF_PERSON,
+            ConstitutionalPrinciple.ACCESS_TO_COURTS,
+        ],
+        section_references=[35, 10, 12, 34],
+        key_concepts=[
+            "lawful detention", "right to challenge detention",
+            "right to be brought before court", "conditions of detention",
+            "right to legal representation", "no torture or cruel treatment"
+        ],
+        perspective_angles=[
+            "Section 35(1) covers arrested persons' rights",
+            "Section 35(2) covers detained persons' rights",
+            "The right to be brought before court within 48 hours",
+            "Habeas corpus and the right to challenge unlawful detention"
+        ],
+        real_world_connections=[
+            "Police holding cells", "Immigration detention",
+            "Remand detention", "Mental health detention",
+            "Unlawful arrests"
+        ]
+    ),
 }
 
 
@@ -625,6 +704,25 @@ KEYWORD_CONCEPT_MAP: dict[str, list[str]] = {
     "strike": ["protest"],
     "demonstrate": ["protest"],
     "picket": ["protest"],
+    "prison": ["prisons", "correctional services"],
+    "prisons": ["prisons", "correctional services"],
+    "prisoner": ["prisons", "correctional services"],
+    "prisoners": ["prisons", "correctional services"],
+    "inmate": ["prisons", "correctional services"],
+    "inmates": ["prisons", "correctional services"],
+    "correctional": ["correctional services"],
+    "corrections": ["correctional services"],
+    "detain": ["detention"],
+    "detained": ["detention"],
+    "detainee": ["detention"],
+    "detainees": ["detention"],
+    "detention": ["detention"],
+    "incarcerate": ["prisons", "correctional services"],
+    "incarcerated": ["prisons", "correctional services"],
+    "jail": ["detention", "prisons"],
+    "remand": ["detention"],
+    "awaiting trial": ["detention"],
+    "accused": ["detention", "correctional services"],
 }
 
 

@@ -137,7 +137,7 @@ Generate a reply that:
 - Clearly expresses the {stance} position using constitutional principles
 - Cites specific {section_label_lower}s to support your argument
 - Is respectful but firm in its position
-- Stays under 280 characters
+- Can be as long as needed to make a complete, compelling argument
 - Is engaging and thought-provoking
 - Uses facts and constitutional provisions, not emotions
 - Avoids personal attacks on the original poster

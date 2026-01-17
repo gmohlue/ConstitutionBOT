@@ -590,7 +590,7 @@ async def generate_reply_to_tweet(
         author=request.author,
         original_tweet=request.tweet_text,
         citations=[
-            {"section_num": c.section_num, "title": c.title}
+            {"section_num": c["section_num"], "title": c.get("section_title", "")}
             for c in content.citations
         ],
         validation_errors=content.validation.errors if content.validation else [],
