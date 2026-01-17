@@ -4,7 +4,7 @@
 {% block page_title %}Content Queue{% endblock %}
 
 {% block content %}
-<div x-data="{ ...queueData(), showPreview: false }" x-init="loadQueue()">
+<div x-data="queueData()" x-init="loadQueue()">
     <!-- Header with filters -->
     <div class="sm:flex sm:items-center sm:justify-between">
         <div>
@@ -272,7 +272,8 @@
     </div>
 
     <!-- Edit Modal -->
-    <div x-show="editingItem" x-cloak class="relative z-50">
+    <template x-if="editingItem">
+    <div class="relative z-50">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
         <div class="fixed inset-0 z-10 overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
@@ -299,9 +300,11 @@
             </div>
         </div>
     </div>
+    </template>
 
     <!-- Schedule Modal -->
-    <div x-show="schedulingItem" x-cloak class="relative z-50">
+    <template x-if="schedulingItem">
+    <div class="relative z-50">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
         <div class="fixed inset-0 z-10 overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
@@ -360,6 +363,7 @@
             </div>
         </div>
     </div>
+    </template>
 
     <!-- Twitter Preview Modal -->
     {% include "partials/twitter_preview.html" %}
@@ -382,6 +386,8 @@ function queueData() {
         // Search and filter state
         searchQuery: '',
         contentTypeFilter: '',
+        // Preview state
+        showPreview: false,
 
         get filteredItems() {
             let items = this.items;
