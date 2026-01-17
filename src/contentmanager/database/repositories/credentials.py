@@ -49,7 +49,8 @@ class CredentialsRepository:
         if secret_key is None:
             from contentmanager.config import get_settings
             settings = get_settings()
-            self._secret_key = settings.dashboard_secret_key
+            # SecretStr needs get_secret_value() to extract the actual string
+            self._secret_key = settings.dashboard_secret_key.get_secret_value()
         else:
             self._secret_key = secret_key
 
