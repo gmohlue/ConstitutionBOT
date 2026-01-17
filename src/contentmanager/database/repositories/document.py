@@ -271,7 +271,10 @@ class DocumentSectionRepository:
 
     async def clear_all(self, document_id: Optional[int] = None) -> int:
         """Delete all sections for a document. Returns count deleted."""
-        doc_id = document_id or await self._get_document_id()
+        try:
+            doc_id = document_id or await self._get_document_id()
+        except ValueError:
+            return 0
         result = await self.session.execute(
             delete(DocumentSection).where(DocumentSection.document_id == doc_id)
         )
@@ -280,7 +283,10 @@ class DocumentSectionRepository:
 
     async def count(self, document_id: Optional[int] = None) -> int:
         """Count total document sections."""
-        doc_id = document_id or await self._get_document_id()
+        try:
+            doc_id = document_id or await self._get_document_id()
+        except ValueError:
+            return 0
         result = await self.session.execute(
             select(func.count(DocumentSection.id)).where(
                 DocumentSection.document_id == doc_id
@@ -290,8 +296,11 @@ class DocumentSectionRepository:
 
     async def has_content(self, document_id: Optional[int] = None) -> bool:
         """Check if document has been uploaded."""
-        count = await self.count(document_id)
-        return count > 0
+        try:
+            count = await self.count(document_id)
+            return count > 0
+        except ValueError:
+            return False
 
 
 # Backward compatibility alias
