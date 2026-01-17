@@ -205,3 +205,34 @@ class UserProvidedMode:
             topic=topic,
             mode="user_provided",
         )
+
+    async def generate_external_tweet_reply(
+        self,
+        tweet_text: str,
+        author: str,
+        stance: str,
+        tone: str = "respectful but firm",
+        focus: Optional[str] = None,
+    ) -> GeneratedContent:
+        """Generate a reply to an external tweet the user saw.
+
+        This allows users to craft constitutional responses to tweets
+        they agree or disagree with.
+
+        Args:
+            tweet_text: The text of the tweet to reply to
+            author: The username of the tweet author (without @)
+            stance: 'agree', 'disagree', or 'neutral'
+            tone: The tone for the reply
+            focus: Optional specific focus area or section
+
+        Returns:
+            GeneratedContent with the reply
+        """
+        return await self.generator.generate_external_tweet_reply(
+            tweet_text=tweet_text,
+            author=author,
+            stance=stance,
+            tone=tone,
+            focus=focus,
+        )

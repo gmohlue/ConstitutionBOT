@@ -120,6 +120,32 @@ If the question requires legal advice, politely redirect them to seek profession
 
 Generate only the reply text, nothing else."""
 
+    EXTERNAL_TWEET_REPLY_PROMPT = """You need to craft a reply to this tweet from a constitutional/civic education perspective:
+
+ORIGINAL TWEET by @{author}:
+"{tweet_text}"
+
+YOUR STANCE: {stance}
+{stance_guidance}
+
+Relevant Context from {document_short_name}:
+{context}
+
+{additional_guidance}
+
+Generate a reply that:
+- Clearly expresses the {stance} position using constitutional principles
+- Cites specific {section_label_lower}s to support your argument
+- Is respectful but firm in its position
+- Stays under 280 characters
+- Is engaging and thought-provoking
+- Uses facts and constitutional provisions, not emotions
+- Avoids personal attacks on the original poster
+
+Tone: {tone}
+
+Generate only the reply text, nothing else."""
+
     HISTORICAL_ANALYSIS_PROMPT = """Analyze how {document_short_name} relates to this historical event or date:
 
 Event/Date: {event}
@@ -291,6 +317,49 @@ TAKEAWAY: [Key lesson from the script]"""
             section_text=section_text,
             format_type=format_type,
             max_length=max_length,
+            **params,
+        )
+
+    @classmethod
+    def get_external_tweet_reply_prompt(
+        cls,
+        tweet_text: str,
+        author: str,
+        stance: str,
+        context: str,
+        tone: str = "respectful but firm",
+        additional_guidance: str = "",
+        doc_context: Optional[DocumentContext] = None,
+    ) -> str:
+        """Get formatted external tweet reply prompt.
+
+        Args:
+            tweet_text: The text of the external tweet to reply to
+            author: The username of the tweet author
+            stance: 'agree', 'disagree', or 'neutral'
+            context: Relevant document sections
+            tone: The tone for the reply
+            additional_guidance: Optional additional instructions
+            doc_context: Document context for customization
+        """
+        params = cls._get_doc_params(doc_context)
+
+        # Generate stance-specific guidance
+        stance_guidance_map = {
+            "agree": "You AGREE with this tweet. Reinforce the point using constitutional principles and show how the Constitution supports this position.",
+            "disagree": "You DISAGREE with this tweet. Respectfully challenge the position using constitutional principles and show why the Constitution suggests a different view.",
+            "neutral": "Take a NEUTRAL educational stance. Present the relevant constitutional principles without taking sides, helping educate the audience on what the Constitution says.",
+        }
+        stance_guidance = stance_guidance_map.get(stance.lower(), stance_guidance_map["neutral"])
+
+        return cls.EXTERNAL_TWEET_REPLY_PROMPT.format(
+            tweet_text=tweet_text,
+            author=author,
+            stance=stance.upper(),
+            stance_guidance=stance_guidance,
+            context=context,
+            tone=tone,
+            additional_guidance=additional_guidance,
             **params,
         )
 

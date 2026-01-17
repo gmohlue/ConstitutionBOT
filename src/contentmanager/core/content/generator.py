@@ -459,6 +459,94 @@ class ContentGenerator:
             mode="user_provided",
         )
 
+    async def generate_external_tweet_reply(
+        self,
+        tweet_text: str,
+        author: str,
+        stance: str,
+        tone: str = "respectful but firm",
+        focus: str | None = None,
+    ) -> GeneratedContent:
+        """Generate a reply to an external tweet based on constitutional principles.
+
+        Args:
+            tweet_text: The text of the tweet to reply to
+            author: The username of the tweet author (without @)
+            stance: 'agree', 'disagree', or 'neutral'
+            tone: The tone for the reply
+            focus: Optional specific focus area or section
+
+        Returns:
+            GeneratedContent with the generated reply
+        """
+        # Get document context
+        doc_context = await self._get_doc_context()
+
+        # Find relevant sections based on tweet content
+        sections = await self.retriever.get_sections_for_topic(tweet_text, limit=3)
+
+        # If focus is specified, also search for that
+        if focus:
+            focus_sections = await self.retriever.get_sections_for_topic(focus, limit=2)
+            # Merge sections, avoiding duplicates
+            existing_nums = {s.section_num for s in sections}
+            for s in focus_sections:
+                if s.section_num not in existing_nums:
+                    sections.append(s)
+
+        # If no sections found, try concept mapping
+        context = ""
+        if sections:
+            context = await self.retriever.format_multiple_sections(sections)
+        else:
+            # Try concept-based context
+            concept_context = self.concept_mapper.build_context_for_synthesis(tweet_text)
+            if concept_context:
+                context = concept_context
+
+        # Build additional guidance if focus is provided
+        additional_guidance = ""
+        if focus:
+            additional_guidance = f"Focus your response on: {focus}"
+
+        # Generate content
+        prompt = PromptTemplates.get_external_tweet_reply_prompt(
+            tweet_text=tweet_text,
+            author=author,
+            stance=stance,
+            context=context,
+            tone=tone,
+            additional_guidance=additional_guidance,
+            doc_context=doc_context,
+        )
+
+        llm = await self._get_llm()
+        raw_content = llm.generate(
+            prompt=prompt,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
+            temperature=0.7,
+        )
+
+        # Parse and format
+        tweet = self.formatter.parse_tweet(raw_content)
+        formatted = self.formatter.format_tweet_for_posting(tweet)
+
+        # Validate as reply
+        validation = self.validator.validate_reply(formatted, tweet_text)
+
+        # Build citations
+        citations = self._build_citations(sections)
+
+        return GeneratedContent(
+            content_type="reply",
+            raw_content=raw_content,
+            formatted_content=formatted,
+            topic=f"Reply to @{author} ({stance})",
+            citations=citations,
+            validation=validation,
+            mode="external_reply",
+        )
+
     async def generate_historical(
         self,
         event: str,

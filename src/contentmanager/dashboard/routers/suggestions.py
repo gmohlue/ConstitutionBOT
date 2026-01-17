@@ -516,3 +516,83 @@ async def generate_enhanced_content(
         validation_warnings=content.validation.warnings if content.validation else [],
         queue_id=queue_id,
     )
+
+
+# ========================================================================
+# REPLY TO EXTERNAL TWEET ENDPOINTS
+# ========================================================================
+
+
+class ExternalTweetReplyRequest(BaseModel):
+    """Request for generating a reply to an external tweet."""
+    tweet_text: str
+    author: str = "unknown"
+    stance: str  # 'agree', 'disagree', or 'neutral'
+    tone: str = "respectful but firm"
+    focus: str | None = None
+
+
+class ExternalTweetReplyResponse(BaseModel):
+    """Response containing the generated reply."""
+    reply: str
+    stance: str
+    author: str
+    original_tweet: str
+    citations: list[dict]
+    validation_errors: list[str]
+    validation_warnings: list[str]
+
+
+@router.post("/reply-to-tweet", response_model=ExternalTweetReplyResponse)
+async def generate_reply_to_tweet(
+    request: ExternalTweetReplyRequest,
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate a reply to an external tweet based on constitutional principles.
+
+    This allows users to craft responses to tweets they agree or disagree with,
+    using the Constitution as a basis for their argument.
+
+    Stances:
+    - agree: Reinforce the tweet's position using constitutional principles
+    - disagree: Respectfully challenge the position using constitutional principles
+    - neutral: Present relevant constitutional principles without taking sides
+    """
+    # Validate stance
+    valid_stances = ["agree", "disagree", "neutral"]
+    if request.stance.lower() not in valid_stances:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid stance. Must be one of: {', '.join(valid_stances)}",
+        )
+
+    # Check if document is loaded
+    doc_repo = DocumentSectionRepository(session)
+    if not await doc_repo.has_content():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Document not loaded. Please upload a document first.",
+        )
+
+    mode = UserProvidedMode(session)
+    content = await mode.generate_external_tweet_reply(
+        tweet_text=request.tweet_text,
+        author=request.author,
+        stance=request.stance.lower(),
+        tone=request.tone,
+        focus=request.focus,
+    )
+
+    return ExternalTweetReplyResponse(
+        reply=content.formatted_content,
+        stance=request.stance.lower(),
+        author=request.author,
+        original_tweet=request.tweet_text,
+        citations=[
+            {"section_num": c.section_num, "title": c.title}
+            for c in content.citations
+        ],
+        validation_errors=content.validation.errors if content.validation else [],
+        validation_warnings=content.validation.warnings if content.validation else [],
+    )

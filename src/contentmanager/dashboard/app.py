@@ -187,6 +187,17 @@ def create_app() -> FastAPI:
             {"request": request, "active_page": "generate"},
         )
 
+    @app.get("/reply-to-tweet", response_class=HTMLResponse)
+    async def reply_to_tweet_page(
+        request: Request,
+        _: str = Depends(require_auth),
+    ):
+        """Reply to external tweet page."""
+        return templates.TemplateResponse(
+            "reply_to_tweet.html",
+            {"request": request, "active_page": "reply-to-tweet"},
+        )
+
     @app.get("/chat", response_class=HTMLResponse)
     async def chat_page(
         request: Request,

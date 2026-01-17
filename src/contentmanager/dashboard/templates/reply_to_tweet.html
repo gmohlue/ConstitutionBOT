@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Reply to Tweet - Content Manager{% endblock %}
+{% block page_title %}Reply to Tweet{% endblock %}
+
+{% block content %}
+<div x-data="replyToTweetData()" x-init="init()">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Input Form -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div>
+                    <h3 class="text-base font-semibold leading-6 text-gray-900">Craft a Constitutional Reply</h3>
+                    <p class="mt-1 text-sm text-gray-500">Paste a tweet you want to reply to and select your stance</p>
+                </div>
+
+                <div class="mt-6 space-y-4">
+                    <!-- Tweet Text Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Tweet Text</label>
+                        <textarea x-model="tweetText" rows="4" placeholder="Paste the tweet text here..."
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"></textarea>
+                        <p class="mt-1 text-xs text-gray-500">Copy and paste the text of the tweet you want to reply to</p>
+                    </div>
+
+                    <!-- Author Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Tweet Author (optional)</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <span class="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">@</span>
+                            <input type="text" x-model="author" placeholder="username"
+                                   class="block w-full flex-1 rounded-none rounded-r-md border-gray-300 focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Stance Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Your Stance</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <button type="button" @click="stance = 'agree'"
+                                    :class="stance === 'agree'
+                                        ? 'bg-green-600 text-white border-green-600'
+                                        : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'"
+                                    class="flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-colors">
+                                <span class="text-2xl mb-1">&#128077;</span>
+                                <span class="text-sm font-medium">Agree</span>
+                                <span class="text-xs mt-1 text-center" :class="stance === 'agree' ? 'text-green-100' : 'text-gray-500'">Reinforce with constitution</span>
+                            </button>
+                            <button type="button" @click="stance = 'disagree'"
+                                    :class="stance === 'disagree'
+                                        ? 'bg-red-600 text-white border-red-600'
+                                        : 'bg-white text-gray-700 border-gray-300 hover:border-red-500'"
+                                    class="flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-colors">
+                                <span class="text-2xl mb-1">&#128078;</span>
+                                <span class="text-sm font-medium">Disagree</span>
+                                <span class="text-xs mt-1 text-center" :class="stance === 'disagree' ? 'text-red-100' : 'text-gray-500'">Challenge with constitution</span>
+                            </button>
+                            <button type="button" @click="stance = 'neutral'"
+                                    :class="stance === 'neutral'
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'"
+                                    class="flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-colors">
+                                <span class="text-2xl mb-1">&#9878;</span>
+                                <span class="text-sm font-medium">Neutral</span>
+                                <span class="text-xs mt-1 text-center" :class="stance === 'neutral' ? 'text-blue-100' : 'text-gray-500'">Educate without taking sides</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tone Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Tone</label>
+                        <select x-model="tone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="respectful but firm">Respectful but firm</option>
+                            <option value="educational and friendly">Educational and friendly</option>
+                            <option value="thought-provoking">Thought-provoking</option>
+                            <option value="passionate and direct">Passionate and direct</option>
+                            <option value="calm and reasoned">Calm and reasoned</option>
+                        </select>
+                    </div>
+
+                    <!-- Focus Area (optional) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Focus Area (optional)</label>
+                        <input type="text" x-model="focus" placeholder="e.g., Section 9, equality, human dignity..."
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                        <p class="mt-1 text-xs text-gray-500">Specify a section or topic to focus the reply on</p>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="pt-4">
+                        <button @click="generateReply()" :disabled="generating || !tweetText || !stance"
+                                class="w-full inline-flex justify-center items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg x-show="generating" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="generating ? 'Generating Reply...' : 'Generate Reply'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-base font-semibold leading-6 text-gray-900">Generated Reply</h3>
+
+                <!-- Empty State -->
+                <div x-show="!result && !generating" class="text-center py-12">
+                    <span class="text-4xl">&#128172;</span>
+                    <p class="mt-2 text-sm text-gray-500">Your generated reply will appear here</p>
+                </div>
+
+                <!-- Loading State -->
+                <div x-show="generating" class="text-center py-12">
+                    <svg class="animate-spin h-8 w-8 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500">Crafting your constitutional reply...</p>
+                </div>
+
+                <!-- Result -->
+                <div x-show="result" class="mt-4 space-y-4">
+                    <!-- Original Tweet -->
+                    <div class="p-3 bg-gray-100 rounded-md border-l-4 border-gray-400">
+                        <p class="text-xs font-medium text-gray-500 mb-1">Original Tweet by @<span x-text="result?.author || 'unknown'"></span></p>
+                        <p class="text-sm text-gray-700" x-text="result?.original_tweet"></p>
+                    </div>
+
+                    <!-- Stance Badge -->
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm font-medium text-gray-500">Your stance:</span>
+                        <span x-show="result?.stance === 'agree'" class="inline-flex items-center rounded-full bg-green-100 px-3 py-0.5 text-sm font-medium text-green-800">
+                            &#128077; Agree
+                        </span>
+                        <span x-show="result?.stance === 'disagree'" class="inline-flex items-center rounded-full bg-red-100 px-3 py-0.5 text-sm font-medium text-red-800">
+                            &#128078; Disagree
+                        </span>
+                        <span x-show="result?.stance === 'neutral'" class="inline-flex items-center rounded-full bg-blue-100 px-3 py-0.5 text-sm font-medium text-blue-800">
+                            &#9878; Neutral
+                        </span>
+                    </div>
+
+                    <!-- Generated Reply -->
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Your Reply</p>
+                        <div class="mt-2 p-4 bg-green-50 rounded-md border border-green-200">
+                            <p class="text-sm text-gray-900 whitespace-pre-wrap" x-text="result?.reply"></p>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between text-xs">
+                            <span :class="(result?.reply?.length || 0) > 280 ? 'text-red-600 font-medium' : 'text-gray-500'">
+                                <span x-text="result?.reply?.length || 0"></span>/280 characters
+                                <span x-show="(result?.reply?.length || 0) > 280">- Over limit!</span>
+                            </span>
+                            <button @click="copyToClipboard(result?.reply)" class="text-green-600 hover:text-green-500">
+                                Copy to clipboard
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Citations -->
+                    <div x-show="result?.citations?.length > 0">
+                        <p class="text-sm font-medium text-gray-500">Constitutional References</p>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            <template x-for="citation in result?.citations" :key="citation.section_num">
+                                <span class="inline-flex items-center rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                                    Section <span x-text="citation.section_num"></span>
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Validation -->
+                    <div x-show="result?.validation_warnings?.length > 0 || result?.validation_errors?.length > 0">
+                        <template x-for="error in result?.validation_errors">
+                            <p class="text-sm text-red-600">Warning: <span x-text="error"></span></p>
+                        </template>
+                        <template x-for="warning in result?.validation_warnings">
+                            <p class="text-sm text-yellow-600">Note: <span x-text="warning"></span></p>
+                        </template>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex space-x-2 pt-4 border-t border-gray-200">
+                        <button @click="generateReply()" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                            Regenerate
+                        </button>
+                        <button @click="copyToClipboard(result?.reply)" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+                            Copy Reply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Replies History -->
+    <div x-show="history.length > 0" class="mt-8 bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold leading-6 text-gray-900">Recent Replies</h3>
+                <button @click="clearHistory()" class="text-xs text-gray-500 hover:text-gray-700">Clear history</button>
+            </div>
+            <div class="mt-4 space-y-3">
+                <template x-for="(item, idx) in history.slice(0, 5)" :key="idx">
+                    <div class="p-3 bg-gray-50 rounded-md cursor-pointer hover:bg-gray-100" @click="loadFromHistory(item)">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-medium text-gray-500">@<span x-text="item.author"></span></span>
+                            <span x-show="item.stance === 'agree'" class="text-xs text-green-600">&#128077; Agreed</span>
+                            <span x-show="item.stance === 'disagree'" class="text-xs text-red-600">&#128078; Disagreed</span>
+                            <span x-show="item.stance === 'neutral'" class="text-xs text-blue-600">&#9878; Neutral</span>
+                        </div>
+                        <p class="text-xs text-gray-600 line-clamp-2" x-text="item.reply"></p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function replyToTweetData() {
+    return {
+        tweetText: '',
+        author: '',
+        stance: '',
+        tone: 'respectful but firm',
+        focus: '',
+        generating: false,
+        result: null,
+        history: [],
+
+        init() {
+            // Load history from localStorage
+            this.loadHistory();
+        },
+
+        async generateReply() {
+            if (!this.tweetText || !this.stance) {
+                showToast('Please enter tweet text and select a stance', 'error');
+                return;
+            }
+
+            this.generating = true;
+            this.result = null;
+
+            try {
+                const response = await fetch('/api/generate/reply-to-tweet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tweet_text: this.tweetText,
+                        author: this.author || 'unknown',
+                        stance: this.stance,
+                        tone: this.tone,
+                        focus: this.focus || null
+                    })
+                });
+
+                if (response.ok) {
+                    this.result = await response.json();
+                    showToast('Reply generated successfully', 'success');
+
+                    // Save to history
+                    this.saveToHistory(this.result);
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Failed to generate reply', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to generate reply', 'error');
+            }
+
+            this.generating = false;
+        },
+
+        copyToClipboard(text) {
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied to clipboard', 'success');
+            }).catch(() => {
+                showToast('Failed to copy', 'error');
+            });
+        },
+
+        saveToHistory(result) {
+            const item = {
+                ...result,
+                timestamp: new Date().toISOString()
+            };
+            this.history.unshift(item);
+            if (this.history.length > 20) {
+                this.history = this.history.slice(0, 20);
+            }
+            localStorage.setItem('reply_to_tweet_history', JSON.stringify(this.history));
+        },
+
+        loadHistory() {
+            try {
+                const saved = localStorage.getItem('reply_to_tweet_history');
+                if (saved) {
+                    this.history = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('Failed to load history:', e);
+            }
+        },
+
+        clearHistory() {
+            this.history = [];
+            localStorage.removeItem('reply_to_tweet_history');
+            showToast('History cleared', 'info');
+        },
+
+        loadFromHistory(item) {
+            this.result = item;
+            this.tweetText = item.original_tweet;
+            this.author = item.author;
+            this.stance = item.stance;
+        }
+    }
+}
+</script>
+{% endblock %}
