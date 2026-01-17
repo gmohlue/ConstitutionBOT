@@ -31,11 +31,11 @@
         <!-- Constitution Status -->
         <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
             <dt class="truncate text-sm font-medium text-gray-500">Constitution</dt>
-            <dd class="mt-1 text-3xl font-semibold tracking-tight" :class="stats.constitution_loaded ? 'text-green-600' : 'text-red-600'">
-                <span x-text="stats.constitution_loaded ? 'Loaded' : 'Not Loaded'">-</span>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight" :class="stats.document_loaded ? 'text-green-600' : 'text-red-600'">
+                <span x-text="stats.document_loaded ? 'Loaded' : 'Not Loaded'">-</span>
             </dd>
-            <span x-show="stats.constitution_loaded" class="text-sm text-gray-500" x-text="stats.total_sections + ' sections'"></span>
-            <a x-show="!stats.constitution_loaded" href="/constitution" class="text-sm text-green-600 hover:text-green-500">Upload now →</a>
+            <span x-show="stats.document_loaded" class="text-sm text-gray-500" x-text="stats.total_sections + ' sections'"></span>
+            <a x-show="!stats.document_loaded" href="/constitution" class="text-sm text-green-600 hover:text-green-500">Upload now →</a>
         </div>
     </div>
 
@@ -126,7 +126,7 @@ function dashboardData() {
             pending_content: 0,
             pending_replies: 0,
             total_posts: 0,
-            constitution_loaded: false,
+            document_loaded: false,
             total_sections: 0,
             bot_enabled: false,
             auto_generate_enabled: false
