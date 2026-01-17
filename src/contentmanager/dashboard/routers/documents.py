@@ -58,8 +58,11 @@ async def upload_document(
 
     # Parse the document
     loader = DocumentLoader()
+    # Derive name from filename (remove extension)
+    doc_name = Path(file.filename).stem.replace("_", " ").replace("-", " ").title()
+    short_name = doc_name[:50] if len(doc_name) > 50 else doc_name
     try:
-        document = loader.parse_file(upload_path)
+        document = loader.parse_file(upload_path, name=doc_name, short_name=short_name)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
