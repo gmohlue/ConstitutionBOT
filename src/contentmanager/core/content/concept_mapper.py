@@ -217,6 +217,79 @@ TOPIC_CONCEPT_MAP: dict[str, ConceptMapping] = {
             "Whistleblower protection"
         ]
     ),
+    "constitutional accountability": ConceptMapping(
+        topic="constitutional accountability",
+        principles=[
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+            ConstitutionalPrinciple.ACCESS_TO_INFORMATION,
+            ConstitutionalPrinciple.DEMOCRATIC_PARTICIPATION,
+            ConstitutionalPrinciple.ACCESS_TO_COURTS,
+        ],
+        section_references=[1, 2, 33, 34, 55, 92, 181, 195],
+        key_concepts=[
+            "constitutional supremacy", "rule of law", "public accountability",
+            "separation of powers", "checks and balances", "judicial review",
+            "executive accountability to Parliament", "Chapter 9 institutions"
+        ],
+        perspective_angles=[
+            "Section 1 establishes constitutional supremacy - no one is above the law",
+            "Section 2 makes the Constitution the supreme law that binds all",
+            "The executive must account to Parliament (Section 92)",
+            "Chapter 9 institutions (Public Protector, Auditor-General) ensure accountability",
+            "Courts can review any government action for constitutionality"
+        ],
+        real_world_connections=[
+            "Nkandla judgment", "State of Capture report", "Court challenges to government",
+            "Parliamentary oversight", "Public Protector investigations", "Auditor-General reports"
+        ]
+    ),
+    "accountability": ConceptMapping(
+        topic="accountability",
+        principles=[
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+            ConstitutionalPrinciple.ACCESS_TO_INFORMATION,
+            ConstitutionalPrinciple.DEMOCRATIC_PARTICIPATION,
+        ],
+        section_references=[1, 33, 92, 181, 195],
+        key_concepts=[
+            "rule of law", "public accountability", "transparency",
+            "responsive government", "ethical conduct", "Chapter 9 institutions"
+        ],
+        perspective_angles=[
+            "Everyone, including government, is bound by the Constitution",
+            "Section 195 values: accountability, transparency, efficiency",
+            "The executive's accountability to the legislature",
+            "Independent institutions that hold power to account"
+        ],
+        real_world_connections=[
+            "Parliamentary questions", "Public Protector complaints",
+            "Auditor-General findings", "Court orders against government"
+        ]
+    ),
+    "government accountability": ConceptMapping(
+        topic="government accountability",
+        principles=[
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+            ConstitutionalPrinciple.ACCESS_TO_INFORMATION,
+            ConstitutionalPrinciple.DEMOCRATIC_PARTICIPATION,
+        ],
+        section_references=[33, 55, 92, 181, 195],
+        key_concepts=[
+            "executive accountability", "parliamentary oversight",
+            "public administration values", "Chapter 9 institutions",
+            "responsive, accountable governance"
+        ],
+        perspective_angles=[
+            "Cabinet members are accountable to Parliament (Section 92)",
+            "National Assembly holds executive to account (Section 55)",
+            "Public administration must be accountable (Section 195)",
+            "Chapter 9 institutions provide independent oversight"
+        ],
+        real_world_connections=[
+            "Cabinet question time", "Portfolio committee hearings",
+            "Motions of no confidence", "Public Protector reports"
+        ]
+    ),
     "unemployment": ConceptMapping(
         topic="unemployment",
         principles=[
@@ -506,6 +579,16 @@ KEYWORD_CONCEPT_MAP: dict[str, list[str]] = {
     "bribe": ["corruption"],
     "tender": ["corruption"],
     "state capture": ["corruption"],
+    "accountability": ["accountability", "constitutional accountability"],
+    "accountable": ["accountability", "constitutional accountability"],
+    "oversight": ["accountability", "government accountability"],
+    "chapter 9": ["constitutional accountability"],
+    "public protector": ["constitutional accountability"],
+    "auditor": ["constitutional accountability"],
+    "parliament": ["government accountability"],
+    "constitutional": ["constitutional accountability"],
+    "supremacy": ["constitutional accountability"],
+    "rule of law": ["constitutional accountability"],
     "jobs": ["unemployment"],
     "employ": ["unemployment"],
     "work": ["unemployment"],
