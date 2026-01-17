@@ -17,7 +17,7 @@ from contentmanager.dashboard.schemas.responses import (
     MessageResponse,
 )
 from contentmanager.database import get_session
-from contentmanager.database.repositories.document import DocumentSectionRepository
+from contentmanager.database.repositories.document import DocumentRepository, DocumentSectionRepository
 
 router = APIRouter(prefix="/api/documents", tags=["Documents"])
 
@@ -72,12 +72,25 @@ async def upload_document(
     # Save processed JSON
     loader.save_processed(document)
 
-    # Clear existing sections and add new ones
-    repo = DocumentSectionRepository(session)
-    await repo.clear_all()
+    # Create or get document record in database
+    doc_repo = DocumentRepository(session)
+    existing_doc = await doc_repo.get_by_short_name(short_name)
+    if existing_doc:
+        db_doc = existing_doc
+    else:
+        db_doc = await doc_repo.create(
+            name=doc_name,
+            short_name=short_name,
+            description=document.description,
+        )
+        await doc_repo.set_active(db_doc.id)
 
-    records = loader.to_database_records(document)
-    await repo.bulk_create(records)
+    # Clear existing sections and add new ones
+    repo = DocumentSectionRepository(session, document_id=db_doc.id)
+    await repo.clear_all(document_id=db_doc.id)
+
+    records = loader.to_database_records(document, document_id=db_doc.id)
+    await repo.bulk_create(records, document_id=db_doc.id)
 
     return DocumentUploadResponse(
         success=True,

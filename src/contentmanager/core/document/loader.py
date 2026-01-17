@@ -339,7 +339,7 @@ class DocumentLoader:
         """Save processed document to JSON file."""
         if output_path is None:
             safe_name = document.short_name.lower().replace(" ", "_")
-            output_path = self.settings.document_processed_dir / f"{safe_name}.json"
+            output_path = self.settings.constitution_processed_dir / f"{safe_name}.json"
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
