@@ -17,6 +17,12 @@ from contentmanager.dashboard.auth import (
     optional_auth,
     require_auth,
 )
+from contentmanager.dashboard.csrf import (
+    generate_csrf_token,
+    get_csrf_from_cookie,
+    set_csrf_cookie,
+    validate_csrf,
+)
 from contentmanager.dashboard.routers import (
     calendar_router,
     chat_router,
@@ -92,20 +98,28 @@ def create_app() -> FastAPI:
         error: str = None,
     ):
         """Login page."""
-        return templates.TemplateResponse(
+        csrf_token = generate_csrf_token()
+        response = templates.TemplateResponse(
             "login.html",
-            {"request": request, "next": next, "error": error},
+            {"request": request, "next": next, "error": error, "csrf_token": csrf_token},
         )
+        set_csrf_cookie(response, csrf_token)
+        return response
 
     @app.post("/login")
     async def login_submit(
         request: Request,
         username: str = Form(...),
         password: str = Form(...),
+        csrf_token: str = Form(...),
         next: str = Form("/"),
         db_session: AsyncSession = Depends(get_session),
     ):
         """Handle login form submission."""
+        # Verify CSRF token
+        cookie_token = get_csrf_from_cookie(request)
+        validate_csrf(cookie_token, csrf_token)
+
         response = RedirectResponse(url=next, status_code=303)
 
         if await login_user(response, username, password, db_session, request):

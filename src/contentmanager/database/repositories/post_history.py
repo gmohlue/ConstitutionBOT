@@ -1,6 +1,6 @@
 """Repository for Post History operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select
@@ -128,7 +128,7 @@ class PostHistoryRepository:
 
         from sqlalchemy import func
 
-        since = datetime.utcnow() - timedelta(days=days)
+        since = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Get posts with engagement data
         query = select(PostHistory).where(
@@ -202,7 +202,7 @@ class PostHistoryRepository:
         """
         from datetime import timedelta
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         min_age = now - timedelta(hours=hours_since_post)
 
         query = select(PostHistory).where(PostHistory.posted_at <= min_age)

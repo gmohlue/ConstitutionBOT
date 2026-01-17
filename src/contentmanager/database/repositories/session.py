@@ -1,6 +1,6 @@
 """Repository for Session management."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import delete, select
@@ -51,7 +51,7 @@ class SessionRepository:
 
     async def delete_expired(self) -> int:
         """Delete all expired sessions. Returns count of deleted sessions."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         result = await self.session.execute(
             delete(Session).where(Session.expires_at < now)
         )
@@ -63,7 +63,9 @@ class SessionRepository:
         session = await self.get_by_token(token)
         if not session:
             return False
-        if datetime.utcnow() > session.expires_at.replace(tzinfo=None):
+        # Compare as UTC (database stores naive UTC times)
+        expires_utc = session.expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expires_utc:
             await self.delete_by_token(token)
             return False
         return True

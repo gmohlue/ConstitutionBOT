@@ -1,6 +1,6 @@
 """Repository for Reply Queue operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select
@@ -94,7 +94,7 @@ class ReplyQueueRepository:
         if status is not None:
             item.status = status
 
-        item.updated_at = datetime.utcnow()
+        item.updated_at = datetime.now(timezone.utc)
         await self.session.flush()
         await self.session.refresh(item)
         return item

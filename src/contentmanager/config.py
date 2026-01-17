@@ -1,11 +1,15 @@
 """Configuration management using Pydantic settings."""
 
+import logging
+import warnings
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 def _get_base_dir() -> Path:
@@ -61,6 +65,7 @@ class Settings(BaseSettings):
     dashboard_password: SecretStr = Field(default=SecretStr("admin"))
     dashboard_host: str = Field(default="127.0.0.1")
     dashboard_port: int = Field(default=8000)
+    dashboard_secure_cookies: bool = Field(default=False)  # Set True in production with HTTPS
 
     # Database
     database_url: str = Field(default="sqlite+aiosqlite:///./data/database/contentmanager.db")
@@ -99,6 +104,30 @@ class Settings(BaseSettings):
         ]:
             if dir_path:
                 dir_path.mkdir(parents=True, exist_ok=True)
+
+        return self
+
+    @model_validator(mode="after")
+    def warn_insecure_defaults(self) -> "Settings":
+        """Warn if insecure default values are being used."""
+        insecure_defaults = []
+
+        if self.dashboard_password.get_secret_value() == "admin":
+            insecure_defaults.append("DASHBOARD_PASSWORD")
+
+        if self.dashboard_secret_key.get_secret_value() == "dev-secret-key-change-in-production":
+            insecure_defaults.append("DASHBOARD_SECRET_KEY")
+
+        if self.dashboard_username == "admin" and self.dashboard_password.get_secret_value() == "admin":
+            insecure_defaults.append("DASHBOARD_USERNAME (with default password)")
+
+        if insecure_defaults:
+            warning_msg = (
+                f"Insecure default values detected for: {', '.join(insecure_defaults)}. "
+                "Please set secure values in your .env file for production use."
+            )
+            warnings.warn(warning_msg, UserWarning, stacklevel=2)
+            logger.warning(warning_msg)
 
         return self
 

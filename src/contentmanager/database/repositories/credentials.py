@@ -97,9 +97,15 @@ class CredentialsRepository:
 
     async def get_credentials_status(self) -> dict:
         """Get status of all credentials (masked values, not actual)."""
+        # Fetch all credentials in a single query to avoid N+1
+        result = await self.session.execute(
+            select(BotSettings).where(BotSettings.key.in_(self.CREDENTIAL_KEYS))
+        )
+        settings = {s.key: self._decode(s.value) for s in result.scalars().all()}
+
         status = {}
         for key in self.CREDENTIAL_KEYS:
-            value = await self.get_credential(key)
+            value = settings.get(key)
             status[key] = {
                 "configured": bool(value),
                 "masked_value": self._mask(value) if value else None,
@@ -108,7 +114,11 @@ class CredentialsRepository:
 
     async def get_all_credentials(self) -> dict:
         """Get all credential values (for internal use only)."""
-        credentials = {}
-        for key in self.CREDENTIAL_KEYS:
-            credentials[key] = await self.get_credential(key)
-        return credentials
+        # Fetch all credentials in a single query to avoid N+1
+        result = await self.session.execute(
+            select(BotSettings).where(BotSettings.key.in_(self.CREDENTIAL_KEYS))
+        )
+        settings = {s.key: self._decode(s.value) for s in result.scalars().all()}
+
+        # Ensure all keys are present (even if None)
+        return {key: settings.get(key) for key in self.CREDENTIAL_KEYS}

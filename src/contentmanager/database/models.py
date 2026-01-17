@@ -124,10 +124,10 @@ class ContentQueue(Base):
     language: Mapped[str] = mapped_column(String(10), default=SALanguage.ENGLISH.value)
     status: Mapped[str] = mapped_column(String(50), default=ContentStatus.PENDING.value, index=True)
     admin_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    scheduled_for: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_for: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     auto_post: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
@@ -174,7 +174,7 @@ class PostHistory(Base):
     reply_to_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     engagement: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     posted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
 
     def __repr__(self) -> str:

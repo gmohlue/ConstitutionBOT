@@ -1,9 +1,9 @@
 """Repository for Conversation and Message operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from contentmanager.database.models import (
@@ -103,7 +103,7 @@ class ConversationRepository:
         if context_sections is not None:
             conversation.context_sections = context_sections
 
-        conversation.updated_at = datetime.utcnow()
+        conversation.updated_at = datetime.now(timezone.utc)
         await self.session.flush()
         await self.session.refresh(conversation)
         return conversation
@@ -128,14 +128,12 @@ class ConversationRepository:
         if not conversation:
             return False
 
-        # Delete all messages first
-        messages = await self.session.execute(
-            select(ConversationMessage).where(
+        # Bulk delete all messages in a single query
+        await self.session.execute(
+            delete(ConversationMessage).where(
                 ConversationMessage.conversation_id == conversation_id
             )
         )
-        for message in messages.scalars().all():
-            await self.session.delete(message)
 
         await self.session.delete(conversation)
         await self.session.flush()

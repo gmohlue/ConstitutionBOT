@@ -1,6 +1,6 @@
 """Repository for Content Queue operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select
@@ -91,7 +91,7 @@ class ContentQueueRepository:
         if status is not None:
             item.status = status
 
-        item.updated_at = datetime.utcnow()
+        item.updated_at = datetime.now(timezone.utc)
         await self.session.flush()
         await self.session.refresh(item)
         return item
@@ -158,7 +158,7 @@ class ContentQueueRepository:
         item.scheduled_for = scheduled_for
         item.auto_post = auto_post
         item.status = ContentStatus.SCHEDULED.value
-        item.updated_at = datetime.utcnow()
+        item.updated_at = datetime.now(timezone.utc)
 
         await self.session.flush()
         await self.session.refresh(item)
@@ -177,7 +177,7 @@ class ContentQueueRepository:
         item.scheduled_for = None
         item.auto_post = False
         item.status = ContentStatus.APPROVED.value
-        item.updated_at = datetime.utcnow()
+        item.updated_at = datetime.now(timezone.utc)
 
         await self.session.flush()
         await self.session.refresh(item)
@@ -185,7 +185,7 @@ class ContentQueueRepository:
 
     async def get_due_for_posting(self) -> list[ContentQueue]:
         """Get items that are due for auto-posting (scheduled_for <= now and auto_post=True)."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         query = (
             select(ContentQueue)
             .where(ContentQueue.status == ContentStatus.SCHEDULED.value)
@@ -262,7 +262,7 @@ class ContentQueueRepository:
         """
         from datetime import timedelta
 
-        cutoff = datetime.utcnow() - timedelta(days=days_back)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
         topic_lower = topic.lower()
 
         # Get recent items

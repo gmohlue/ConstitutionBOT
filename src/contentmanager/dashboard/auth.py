@@ -1,7 +1,7 @@
 """Authentication for the admin dashboard."""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Request, Response, status
@@ -34,7 +34,7 @@ class AuthManager:
     ) -> str:
         """Create a new session and return the session token."""
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + self._session_duration
+        expires_at = datetime.now(timezone.utc) + self._session_duration
 
         repo = SessionRepository(db_session)
         await repo.create(
@@ -158,12 +158,13 @@ async def login_user(
         user_agent=user_agent,
         ip_address=ip_address,
     )
+    settings = get_settings()
     response.set_cookie(
         key="session",
         value=token,
         path="/",
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=settings.dashboard_secure_cookies,
         samesite="lax",
         max_age=86400,  # 24 hours
     )
