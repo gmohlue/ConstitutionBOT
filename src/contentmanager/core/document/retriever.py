@@ -215,7 +215,3 @@ class DocumentRetriever:
         for section in sections:
             formatted.append(await self.format_section_for_prompt(section))
         return "\n\n---\n\n".join(formatted)
-
-
-# Backward compatibility alias
-ConstitutionRetriever = DocumentRetriever

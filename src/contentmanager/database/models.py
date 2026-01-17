@@ -236,9 +236,6 @@ class DocumentSection(Base):
         return f"<DocumentSection(doc={self.document_id}, chapter={self.chapter_num}, section={self.section_num})>"
 
 
-# Backward compatibility alias
-ConstitutionSection = DocumentSection
-
 
 class BotSettings(Base):
     """Bot configuration settings stored in database."""

@@ -24,8 +24,8 @@ from contentmanager.dashboard.schemas.requests import (
 )
 from contentmanager.dashboard.schemas.responses import (
     ContentQueueResponse,
-    ConstitutionSectionResponse,
-    ConstitutionUploadResponse,
+    DocumentSectionResponse,
+    DocumentUploadResponse,
     HistoryResponse,
     ReplyQueueResponse,
     StatsResponse,
@@ -50,8 +50,8 @@ __all__ = [
     # Responses
     "ContentQueueResponse",
     "ReplyQueueResponse",
-    "ConstitutionSectionResponse",
-    "ConstitutionUploadResponse",
+    "DocumentSectionResponse",
+    "DocumentUploadResponse",
     "TopicSuggestionResponse",
     "HistoryResponse",
     "StatsResponse",

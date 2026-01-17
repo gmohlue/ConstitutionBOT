@@ -21,7 +21,7 @@ from contentmanager.dashboard.schemas.responses import (
     TopicSuggestionResponse,
 )
 from contentmanager.database import get_session
-from contentmanager.database.repositories.constitution import ConstitutionRepository
+from contentmanager.database.repositories.document import DocumentSectionRepository
 from contentmanager.database.repositories.content_queue import ContentQueueRepository
 
 router = APIRouter(prefix="/api/generate", tags=["Content Generation"])
@@ -34,12 +34,12 @@ async def suggest_topic(
     session: AsyncSession = Depends(get_session),
 ):
     """Get a topic suggestion from the bot."""
-    # Check if constitution is loaded
-    const_repo = ConstitutionRepository(session)
-    if not await const_repo.has_content():
+    # Check if document is loaded
+    doc_repo = DocumentSectionRepository(session)
+    if not await doc_repo.has_content():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Constitution not loaded. Please upload a constitution first.",
+            detail="Document not loaded. Please upload a document first.",
         )
 
     mode = BotProposedMode(session)
@@ -61,12 +61,12 @@ async def generate_content(
     session: AsyncSession = Depends(get_session),
 ):
     """Generate content for a topic."""
-    # Check if constitution is loaded
-    const_repo = ConstitutionRepository(session)
-    if not await const_repo.has_content():
+    # Check if document is loaded
+    doc_repo = DocumentSectionRepository(session)
+    if not await doc_repo.has_content():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Constitution not loaded. Please upload a constitution first.",
+            detail="Document not loaded. Please upload a document first.",
         )
 
     # Select mode
@@ -138,12 +138,12 @@ async def explain_section(
     session: AsyncSession = Depends(get_session),
 ):
     """Generate an explanation for a specific section."""
-    # Check if constitution is loaded
-    const_repo = ConstitutionRepository(session)
-    if not await const_repo.has_content():
+    # Check if document is loaded
+    doc_repo = DocumentSectionRepository(session)
+    if not await doc_repo.has_content():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Constitution not loaded. Please upload a constitution first.",
+            detail="Document not loaded. Please upload a document first.",
         )
 
     # Verify section exists
@@ -193,12 +193,12 @@ async def generate_historical_content(
     session: AsyncSession = Depends(get_session),
 ):
     """Generate content about a historical event."""
-    # Check if constitution is loaded
-    const_repo = ConstitutionRepository(session)
-    if not await const_repo.has_content():
+    # Check if document is loaded
+    doc_repo = DocumentSectionRepository(session)
+    if not await doc_repo.has_content():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Constitution not loaded. Please upload a constitution first.",
+            detail="Document not loaded. Please upload a document first.",
         )
 
     mode = HistoricalMode(session)
@@ -239,12 +239,12 @@ async def auto_generate(
     session: AsyncSession = Depends(get_session),
 ):
     """Auto-generate content (bot suggests topic and generates)."""
-    # Check if constitution is loaded
-    const_repo = ConstitutionRepository(session)
-    if not await const_repo.has_content():
+    # Check if document is loaded
+    doc_repo = DocumentSectionRepository(session)
+    if not await doc_repo.has_content():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Constitution not loaded. Please upload a constitution first.",
+            detail="Document not loaded. Please upload a document first.",
         )
 
     mode = BotProposedMode(session)

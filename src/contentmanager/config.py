@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     # Paths - using Optional with computed defaults
     base_dir: Path = Field(default_factory=_get_base_dir)
     data_dir: Optional[Path] = Field(default=None)
-    constitution_uploads_dir: Optional[Path] = Field(default=None)
-    constitution_processed_dir: Optional[Path] = Field(default=None)
+    document_uploads_dir: Optional[Path] = Field(default=None)
+    document_processed_dir: Optional[Path] = Field(default=None)
     prompts_dir: Optional[Path] = Field(default=None)
     database_dir: Optional[Path] = Field(default=None)
 
@@ -81,10 +81,10 @@ class Settings(BaseSettings):
         """Set derived paths after initialization."""
         if self.data_dir is None:
             object.__setattr__(self, "data_dir", self.base_dir / "data")
-        if self.constitution_uploads_dir is None:
-            object.__setattr__(self, "constitution_uploads_dir", self.data_dir / "constitution" / "uploads")
-        if self.constitution_processed_dir is None:
-            object.__setattr__(self, "constitution_processed_dir", self.data_dir / "constitution" / "processed")
+        if self.document_uploads_dir is None:
+            object.__setattr__(self, "document_uploads_dir", self.data_dir / "documents" / "uploads")
+        if self.document_processed_dir is None:
+            object.__setattr__(self, "document_processed_dir", self.data_dir / "documents" / "processed")
         if self.prompts_dir is None:
             object.__setattr__(self, "prompts_dir", self.data_dir / "prompts" / "system_prompts")
         if self.database_dir is None:
@@ -92,8 +92,8 @@ class Settings(BaseSettings):
 
         # Ensure directories exist
         for dir_path in [
-            self.constitution_uploads_dir,
-            self.constitution_processed_dir,
+            self.document_uploads_dir,
+            self.document_processed_dir,
             self.prompts_dir,
             self.database_dir,
         ]:

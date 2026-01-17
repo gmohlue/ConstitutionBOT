@@ -118,9 +118,9 @@ class BotProposedMode:
         This randomly selects a section and creates educational content
         explaining its importance and relevance.
         """
-        from contentmanager.core.constitution.retriever import ConstitutionRetriever
+        from contentmanager.core.document.retriever import DocumentRetriever
 
-        retriever = ConstitutionRetriever(self.session)
+        retriever = DocumentRetriever(self.session)
 
         # Get a random section
         section = await retriever.get_random_section()
@@ -156,10 +156,10 @@ class BotProposedMode:
         The Bill of Rights is particularly important for civic education,
         so this method specifically targets those sections.
         """
-        from contentmanager.core.constitution.retriever import ConstitutionRetriever
+        from contentmanager.core.document.retriever import DocumentRetriever
         import random
 
-        retriever = ConstitutionRetriever(self.session)
+        retriever = DocumentRetriever(self.session)
 
         # Get Bill of Rights sections
         sections = await retriever.get_bill_of_rights_sections()

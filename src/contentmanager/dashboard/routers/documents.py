@@ -46,7 +46,7 @@ async def upload_document(
         )
 
     # Save uploaded file
-    upload_path = settings.constitution_uploads_dir / file.filename
+    upload_path = settings.document_uploads_dir / file.filename
     try:
         with open(upload_path, "wb") as f:
             shutil.copyfileobj(file.file, f)

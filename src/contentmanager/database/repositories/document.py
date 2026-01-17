@@ -301,7 +301,3 @@ class DocumentSectionRepository:
             return count > 0
         except ValueError:
             return False
-
-
-# Backward compatibility alias
-ConstitutionRepository = DocumentSectionRepository

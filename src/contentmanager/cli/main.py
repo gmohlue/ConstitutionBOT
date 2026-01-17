@@ -32,14 +32,14 @@ def init_database():
     print("Database initialized successfully")
 
 
-def upload_constitution(file_path: str):
-    """Upload and parse a constitution file."""
+def upload_document(file_path: str):
+    """Upload and parse a document file."""
     import asyncio
     from pathlib import Path
 
-    from contentmanager.core.constitution.loader import ConstitutionLoader
+    from contentmanager.core.document.loader import DocumentLoader
     from contentmanager.database import async_session_maker, init_db
-    from contentmanager.database.repositories.constitution import ConstitutionRepository
+    from contentmanager.database.repositories.document import DocumentRepository, DocumentSectionRepository
 
     async def _upload():
         await init_db()
@@ -49,23 +49,41 @@ def upload_constitution(file_path: str):
             print(f"File not found: {file_path}")
             return
 
-        loader = ConstitutionLoader()
+        # Derive name from filename
+        doc_name = path.stem.replace("_", " ").replace("-", " ").title()
+        short_name = doc_name[:50] if len(doc_name) > 50 else doc_name
+
+        loader = DocumentLoader()
         print(f"Parsing {path.name}...")
 
-        constitution = loader.parse_file(path)
-        loader.save_processed(constitution)
+        document = loader.parse_file(path, name=doc_name, short_name=short_name)
+        loader.save_processed(document)
 
-        print(f"Found {len(constitution.chapters)} chapters, {len(constitution.all_sections)} sections")
+        print(f"Found {len(document.chapters)} chapters, {len(document.all_sections)} sections")
 
         async with async_session_maker() as session:
-            repo = ConstitutionRepository(session)
-            await repo.clear_all()
+            # Create or get document record
+            doc_repo = DocumentRepository(session)
+            existing_doc = await doc_repo.get_by_short_name(short_name)
+            if existing_doc:
+                db_doc = existing_doc
+            else:
+                db_doc = await doc_repo.create(
+                    name=doc_name,
+                    short_name=short_name,
+                    description=document.description,
+                )
+            await doc_repo.set_active(db_doc.id)
 
-            records = loader.to_database_records(constitution)
-            await repo.bulk_create(records)
+            # Clear and upload sections
+            repo = DocumentSectionRepository(session, document_id=db_doc.id)
+            await repo.clear_all(document_id=db_doc.id)
+
+            records = loader.to_database_records(document, document_id=db_doc.id)
+            await repo.bulk_create(records, document_id=db_doc.id)
             await session.commit()
 
-        print("Constitution uploaded successfully")
+        print("Document uploaded successfully")
 
     asyncio.run(_upload())
 
@@ -128,7 +146,7 @@ Examples:
   contentmanager dashboard              Start the admin dashboard
   contentmanager bot                    Start the Twitter bot
   contentmanager init                   Initialize the database
-  contentmanager upload constitution.pdf Upload a constitution file
+  contentmanager upload document.pdf    Upload a document file
   contentmanager generate "Right to equality"  Generate content
         """,
     )
@@ -148,7 +166,7 @@ Examples:
     subparsers.add_parser("init", help="Initialize the database")
 
     # Upload command
-    upload_parser = subparsers.add_parser("upload", help="Upload a constitution file")
+    upload_parser = subparsers.add_parser("upload", help="Upload a document file")
     upload_parser.add_argument("file", help="Path to PDF or TXT file")
 
     # Generate command
@@ -167,7 +185,7 @@ Examples:
     elif args.command == "init":
         init_database()
     elif args.command == "upload":
-        upload_constitution(args.file)
+        upload_document(args.file)
     elif args.command == "generate":
         generate_content(args.topic, args.type)
     else:

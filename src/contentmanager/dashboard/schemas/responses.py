@@ -101,10 +101,6 @@ class DocumentSectionResponse(BaseModel):
         from_attributes = True
 
 
-# Backward compatibility alias
-ConstitutionSectionResponse = DocumentSectionResponse
-
-
 class DocumentUploadResponse(BaseModel):
     """Response after uploading a document."""
 
@@ -112,10 +108,6 @@ class DocumentUploadResponse(BaseModel):
     message: str
     chapters_count: int = 0
     sections_count: int = 0
-
-
-# Backward compatibility alias
-ConstitutionUploadResponse = DocumentUploadResponse
 
 
 class ChapterSummary(BaseModel):
@@ -132,10 +124,6 @@ class DocumentSummaryResponse(BaseModel):
     is_loaded: bool
     total_sections: int = 0
     chapters: list[ChapterSummary] = Field(default_factory=list)
-
-
-# Backward compatibility alias
-ConstitutionSummaryResponse = DocumentSummaryResponse
 
 
 class TopicSuggestionResponse(BaseModel):

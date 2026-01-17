@@ -14,7 +14,7 @@ from contentmanager.dashboard.schemas.responses import (
 )
 from contentmanager.database import get_session
 from contentmanager.database.models import ContentStatus
-from contentmanager.database.repositories.constitution import ConstitutionRepository
+from contentmanager.database.repositories.document import DocumentSectionRepository
 from contentmanager.database.repositories.content_queue import ContentQueueRepository
 from contentmanager.database.repositories.post_history import PostHistoryRepository
 from contentmanager.database.repositories.reply_queue import ReplyQueueRepository
@@ -87,10 +87,10 @@ async def get_stats(
     history_repo = PostHistoryRepository(session)
     history_stats = await history_repo.get_stats()
 
-    # Constitution stats
-    const_repo = ConstitutionRepository(session)
-    constitution_loaded = await const_repo.has_content()
-    total_sections = await const_repo.count() if constitution_loaded else 0
+    # Document stats
+    doc_repo = DocumentSectionRepository(session)
+    document_loaded = await doc_repo.has_content()
+    total_sections = await doc_repo.count() if document_loaded else 0
 
     return StatsResponse(
         pending_content=pending_content,
@@ -100,7 +100,7 @@ async def get_stats(
         tweets_posted=history_stats["tweets"],
         threads_posted=history_stats["threads"],
         replies_posted=history_stats["replies"],
-        document_loaded=constitution_loaded,
+        document_loaded=document_loaded,
         total_sections=total_sections,
         bot_enabled=settings.bot_enabled,
         auto_generate_enabled=settings.auto_generate_enabled,

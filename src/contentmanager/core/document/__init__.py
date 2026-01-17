@@ -1,14 +1,12 @@
 """Document processing module - supports any document type."""
 
 from contentmanager.core.document.loader import (
-    DocumentLoader,
-    ParsingStrategy,
-    ChapterSectionStrategy,
     ArticleStrategy,
+    ChapterSectionStrategy,
+    DocumentLoader,
     NumberedListStrategy,
     PARSING_STRATEGIES,
-    # Backward compatibility
-    ConstitutionLoader,
+    ParsingStrategy,
 )
 from contentmanager.core.document.models import (
     Chapter,
@@ -18,11 +16,7 @@ from contentmanager.core.document.models import (
     Section,
     Subsection,
 )
-from contentmanager.core.document.retriever import (
-    DocumentRetriever,
-    # Backward compatibility
-    ConstitutionRetriever,
-)
+from contentmanager.core.document.retriever import DocumentRetriever
 
 __all__ = [
     # Models
@@ -41,7 +35,4 @@ __all__ = [
     "PARSING_STRATEGIES",
     # Retriever
     "DocumentRetriever",
-    # Backward compatibility
-    "ConstitutionLoader",
-    "ConstitutionRetriever",
 ]

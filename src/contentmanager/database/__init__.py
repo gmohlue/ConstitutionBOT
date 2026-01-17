@@ -8,18 +8,29 @@ from contentmanager.database.database import (
 )
 from contentmanager.database.models import (
     Base,
-    ConstitutionSection,
     ContentQueue,
+    Document,
+    DocumentSection,
     PostHistory,
     ReplyQueue,
 )
+from contentmanager.database.repositories.document import (
+    DocumentRepository,
+    DocumentSectionRepository,
+)
 
 __all__ = [
+    # Models
     "Base",
     "ContentQueue",
-    "ReplyQueue",
+    "Document",
+    "DocumentSection",
     "PostHistory",
-    "ConstitutionSection",
+    "ReplyQueue",
+    # Repositories
+    "DocumentRepository",
+    "DocumentSectionRepository",
+    # Database utilities
     "engine",
     "async_session_maker",
     "get_session",
