@@ -3,7 +3,7 @@
 import json
 import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from constitutionbot.core.claude_client import ClaudeClient, get_claude_client
 from constitutionbot.core.constitution.retriever import ConstitutionRetriever
 from constitutionbot.core.content.generator import ContentGenerator, GeneratedContent
 from constitutionbot.core.content.templates import PromptTemplates
+from constitutionbot.core.llm import LLMProvider, get_llm_provider
 from constitutionbot.database.models import (
     ConversationMessage,
     MessageRole,
@@ -59,14 +60,34 @@ class ChatService:
     def __init__(
         self,
         session: AsyncSession,
-        claude_client: Optional[ClaudeClient] = None,
+        llm_provider: Optional[Union[LLMProvider, ClaudeClient]] = None,
+        claude_client: Optional[ClaudeClient] = None,  # Deprecated, for backward compat
     ):
         self.session = session
-        self.claude = claude_client or get_claude_client()
+        self._llm_provider = llm_provider or claude_client
+        self._llm_initialized = False
         self.retriever = ConstitutionRetriever(session)
-        self.generator = ContentGenerator(session, self.claude)
+        self.generator = ContentGenerator(session, llm_provider=self._llm_provider)
         self.conversation_repo = ConversationRepository(session)
         self.message_repo = MessageRepository(session)
+
+    async def _get_llm(self) -> Union[LLMProvider, ClaudeClient]:
+        """Get the LLM provider, initializing if needed."""
+        if self._llm_provider is not None:
+            return self._llm_provider
+        if not self._llm_initialized:
+            self._llm_provider = await get_llm_provider(self.session)
+            self._llm_initialized = True
+            # Update generator's LLM provider
+            self.generator._llm_provider = self._llm_provider
+        return self._llm_provider
+
+    @property
+    def claude(self) -> Union[LLMProvider, ClaudeClient]:
+        """Backward compatibility property. Use _get_llm() for async contexts."""
+        if self._llm_provider is None:
+            self._llm_provider = get_claude_client()
+        return self._llm_provider
 
     async def process_message(
         self,
@@ -189,10 +210,11 @@ class ChatService:
                     confidence=0.85,
                 )
 
-        # Use Claude for more complex intent detection
+        # Use LLM for more complex intent detection
         try:
             prompt = PromptTemplates.get_chat_intent_prompt(message, context)
-            response = self.claude.generate(
+            llm = await self._get_llm()
+            response = llm.generate(
                 prompt=prompt,
                 temperature=0.3,
                 max_tokens=200,
@@ -279,7 +301,8 @@ Please answer this question about the South African Constitution. Cite specific 
 
         messages.append({"role": "user", "content": full_question})
 
-        response = self.claude.generate_with_messages(
+        llm = await self._get_llm()
+        response = llm.generate_with_messages(
             messages=messages,
             system_prompt=PromptTemplates.CHAT_SYSTEM_PROMPT,
             temperature=0.7,
@@ -302,7 +325,8 @@ Please answer this question about the South African Constitution. Cite specific 
             List of TopicSuggestion objects
         """
         prompt = PromptTemplates.get_chat_topic_suggestions_prompt(context)
-        response = self.claude.generate(
+        llm = await self._get_llm()
+        response = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.8,
@@ -401,7 +425,8 @@ Please answer this question about the South African Constitution. Cite specific 
             context=const_context,
         )
 
-        response = self.claude.generate(
+        llm = await self._get_llm()
+        response = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.6,
@@ -573,7 +598,8 @@ Provide an engaging overview of this topic that:
 3. Suggests related topics they might want to explore
 4. Offers to generate content (tweet, thread, or script) about any aspect"""
 
-        response = self.claude.generate(
+        llm = await self._get_llm()
+        response = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.CHAT_SYSTEM_PROMPT,
             temperature=0.7,
@@ -663,7 +689,8 @@ Provide an engaging overview of this topic that:
 
         messages.append({"role": "user", "content": message})
 
-        response = self.claude.generate_with_messages(
+        llm = await self._get_llm()
+        response = llm.generate_with_messages(
             messages=messages,
             system_prompt=PromptTemplates.CHAT_SYSTEM_PROMPT,
             temperature=0.7,

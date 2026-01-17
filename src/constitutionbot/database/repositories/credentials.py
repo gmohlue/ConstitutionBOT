@@ -14,6 +14,7 @@ class CredentialsRepository:
     """Repository for managing API credentials securely."""
 
     # Credential keys
+    ANTHROPIC_API_KEY = "anthropic_api_key"
     TWITTER_API_KEY = "twitter_api_key"
     TWITTER_API_SECRET = "twitter_api_secret"
     TWITTER_ACCESS_TOKEN = "twitter_access_token"
@@ -22,6 +23,7 @@ class CredentialsRepository:
     OPENAI_API_KEY = "openai_api_key"
 
     CREDENTIAL_KEYS = [
+        ANTHROPIC_API_KEY,
         TWITTER_API_KEY,
         TWITTER_API_SECRET,
         TWITTER_ACCESS_TOKEN,

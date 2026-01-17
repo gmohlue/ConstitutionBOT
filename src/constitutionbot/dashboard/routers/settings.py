@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from constitutionbot.config import get_settings
+from constitutionbot.core.llm import AVAILABLE_MODELS, LLMProviderType
 from constitutionbot.dashboard.auth import require_auth
 from constitutionbot.dashboard.schemas.requests import SettingsUpdateRequest
 from constitutionbot.dashboard.schemas.responses import MessageResponse
@@ -411,3 +412,215 @@ async def test_credentials(
             success=False,
             message=f"Error testing credentials: {str(e)}",
         )
+
+
+# ============================================================================
+# LLM Provider Settings Endpoints
+# ============================================================================
+
+
+class LLMSettingsResponse(BaseModel):
+    """Response for LLM provider settings."""
+
+    provider: str
+    anthropic_model: str
+    anthropic_configured: bool
+    openai_model: str
+    openai_configured: bool
+    ollama_host: str
+    ollama_model: str
+    ollama_available: bool
+    available_models: dict
+
+
+class LLMSettingsUpdateRequest(BaseModel):
+    """Request to update LLM settings."""
+
+    provider: Optional[str] = None
+    anthropic_model: Optional[str] = None
+    openai_model: Optional[str] = None
+    ollama_host: Optional[str] = None
+    ollama_model: Optional[str] = None
+
+
+@router.get("/llm", response_model=LLMSettingsResponse)
+async def get_llm_settings(
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get current LLM provider settings."""
+    settings = get_settings()
+    repo = CredentialsRepository(session)
+
+    # Check which providers are configured
+    anthropic_key = await repo.get_credential(repo.ANTHROPIC_API_KEY)
+    if not anthropic_key:
+        anthropic_key = settings.anthropic_api_key.get_secret_value()
+
+    openai_key = await repo.get_credential(repo.OPENAI_API_KEY)
+    if not openai_key:
+        openai_api_key = getattr(settings, "openai_api_key", None)
+        if openai_api_key:
+            openai_key = openai_api_key.get_secret_value()
+
+    # Check Ollama availability
+    ollama_available = False
+    ollama_host = getattr(settings, "ollama_host", "http://localhost:11434")
+    try:
+        import httpx
+        with httpx.Client(timeout=5.0) as client:
+            response = client.get(f"{ollama_host}/api/tags")
+            ollama_available = response.status_code == 200
+    except Exception:
+        pass
+
+    return LLMSettingsResponse(
+        provider=getattr(settings, "llm_provider", "anthropic"),
+        anthropic_model=settings.anthropic_model,
+        anthropic_configured=bool(anthropic_key),
+        openai_model=getattr(settings, "openai_model", "gpt-4o"),
+        openai_configured=bool(openai_key),
+        ollama_host=ollama_host,
+        ollama_model=getattr(settings, "ollama_model", "llama3.2"),
+        ollama_available=ollama_available,
+        available_models={
+            "anthropic": AVAILABLE_MODELS[LLMProviderType.ANTHROPIC],
+            "openai": AVAILABLE_MODELS[LLMProviderType.OPENAI],
+            "ollama": AVAILABLE_MODELS[LLMProviderType.OLLAMA],
+        },
+    )
+
+
+@router.patch("/llm", response_model=MessageResponse)
+async def update_llm_settings(
+    request: LLMSettingsUpdateRequest,
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Update LLM provider settings.
+
+    Note: These settings are stored in the database and require
+    service restart to take effect for new requests.
+    """
+    from constitutionbot.database.models import BotSettings
+    from sqlalchemy import select
+
+    updates: dict[str, str] = {}
+
+    if request.provider is not None:
+        # Validate provider
+        if request.provider not in ["anthropic", "openai", "ollama"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid provider. Valid options: anthropic, openai, ollama",
+            )
+        updates["llm_provider"] = request.provider
+
+    if request.anthropic_model is not None:
+        updates["anthropic_model"] = request.anthropic_model
+
+    if request.openai_model is not None:
+        updates["openai_model"] = request.openai_model
+
+    if request.ollama_host is not None:
+        updates["ollama_host"] = request.ollama_host
+
+    if request.ollama_model is not None:
+        updates["ollama_model"] = request.ollama_model
+
+    if updates:
+        for key, value in updates.items():
+            result = await session.execute(
+                select(BotSettings).where(BotSettings.key == key)
+            )
+            existing = result.scalar_one_or_none()
+
+            if existing:
+                existing.value = value
+            else:
+                session.add(BotSettings(key=key, value=value))
+
+        await session.flush()
+
+    return MessageResponse(
+        success=True,
+        message=f"Updated {len(updates)} LLM setting(s). Restart may be required.",
+        data=updates,
+    )
+
+
+@router.post("/llm/test", response_model=MessageResponse)
+async def test_llm_provider(
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Test the current LLM provider configuration."""
+    try:
+        from constitutionbot.core.llm import get_llm_provider
+
+        provider = await get_llm_provider(session)
+
+        # Test with a simple prompt
+        response = provider.generate(
+            prompt="Say 'Hello' in one word.",
+            max_tokens=10,
+            temperature=0.1,
+        )
+
+        return MessageResponse(
+            success=True,
+            message=f"Successfully connected to {provider.provider_name} ({provider.model_name})",
+            data={
+                "provider": provider.provider_name,
+                "model": provider.model_name,
+                "response": response.strip(),
+            },
+        )
+    except Exception as e:
+        return MessageResponse(
+            success=False,
+            message=f"LLM provider test failed: {str(e)}",
+        )
+
+
+@router.get("/llm/ollama/models")
+async def get_ollama_models(
+    _: str = Depends(require_auth),
+):
+    """Get list of available Ollama models."""
+    settings = get_settings()
+    ollama_host = getattr(settings, "ollama_host", "http://localhost:11434")
+
+    try:
+        import httpx
+        with httpx.Client(timeout=10.0) as client:
+            response = client.get(f"{ollama_host}/api/tags")
+            if response.status_code == 200:
+                data = response.json()
+                models = [
+                    {
+                        "name": m["name"],
+                        "size": m.get("size"),
+                        "modified_at": m.get("modified_at"),
+                    }
+                    for m in data.get("models", [])
+                ]
+                return {
+                    "success": True,
+                    "host": ollama_host,
+                    "models": models,
+                }
+            else:
+                return {
+                    "success": False,
+                    "host": ollama_host,
+                    "error": f"HTTP {response.status_code}",
+                    "models": [],
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "host": ollama_host,
+            "error": str(e),
+            "models": [],
+        }

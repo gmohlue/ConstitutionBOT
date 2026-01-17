@@ -233,6 +233,136 @@
             </div>
         </div>
 
+        <!-- LLM Provider Settings -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">LLM Provider</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Select and configure your AI language model provider</p>
+                    </div>
+                    <button @click="testLLMProvider()"
+                            :disabled="testingLLM"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                        <svg x-show="testingLLM" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="testingLLM ? 'Testing...' : 'Test Connection'"></span>
+                    </button>
+                </div>
+
+                <!-- Test Result -->
+                <div x-show="llmTestResult" x-cloak class="mt-4">
+                    <div class="rounded-md p-4" :class="llmTestResult?.success ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg x-show="llmTestResult?.success" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                </svg>
+                                <svg x-show="!llmTestResult?.success" class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium" :class="llmTestResult?.success ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'" x-text="llmTestResult?.message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 space-y-6">
+                    <!-- Provider Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Active Provider</label>
+                        <select x-model="llmSettings.provider" @change="saveLLMSettings()"
+                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            <option value="anthropic">Anthropic Claude</option>
+                            <option value="openai">OpenAI GPT</option>
+                            <option value="ollama">Ollama (Local)</option>
+                        </select>
+                    </div>
+
+                    <!-- Provider-specific settings -->
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <!-- Anthropic Settings -->
+                        <div x-show="llmSettings.provider === 'anthropic'" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">Anthropic Claude</span>
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
+                                      :class="llmSettings.anthropic_configured ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'"
+                                      x-text="llmSettings.anthropic_configured ? 'API Key Configured' : 'API Key Missing'"></span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+                                <select x-model="llmSettings.anthropic_model" @change="saveLLMSettings()"
+                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                                    <template x-for="model in llmSettings.available_models?.anthropic || []" :key="model">
+                                        <option :value="model" x-text="model"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- OpenAI Settings -->
+                        <div x-show="llmSettings.provider === 'openai'" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">OpenAI GPT</span>
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
+                                      :class="llmSettings.openai_configured ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'"
+                                      x-text="llmSettings.openai_configured ? 'API Key Configured' : 'API Key Missing'"></span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+                                <select x-model="llmSettings.openai_model" @change="saveLLMSettings()"
+                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                                    <template x-for="model in llmSettings.available_models?.openai || []" :key="model">
+                                        <option :value="model" x-text="model"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Ollama Settings -->
+                        <div x-show="llmSettings.provider === 'ollama'" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">Ollama (Local)</span>
+                                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
+                                      :class="llmSettings.ollama_available ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'"
+                                      x-text="llmSettings.ollama_available ? 'Server Available' : 'Server Unavailable'"></span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Host URL</label>
+                                <input type="text" x-model="llmSettings.ollama_host" @change="saveLLMSettings()"
+                                       placeholder="http://localhost:11434"
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+                                <div class="mt-1 flex space-x-2">
+                                    <select x-model="llmSettings.ollama_model" @change="saveLLMSettings()"
+                                            class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm">
+                                        <template x-for="model in ollamaModels" :key="model.name">
+                                            <option :value="model.name" x-text="model.name"></option>
+                                        </template>
+                                        <template x-if="ollamaModels.length === 0">
+                                            <template x-for="model in llmSettings.available_models?.ollama || []" :key="model">
+                                                <option :value="model" x-text="model"></option>
+                                            </template>
+                                        </template>
+                                    </select>
+                                    <button @click="loadOllamaModels()" type="button"
+                                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                        Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Bot Settings -->
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
@@ -362,15 +492,30 @@ function settingsData() {
             bearer_token: false,
             openai: false
         },
+        llmSettings: {
+            provider: 'anthropic',
+            anthropic_model: 'claude-sonnet-4-20250514',
+            anthropic_configured: false,
+            openai_model: 'gpt-4o',
+            openai_configured: false,
+            ollama_host: 'http://localhost:11434',
+            ollama_model: 'llama3.2',
+            ollama_available: false,
+            available_models: {}
+        },
+        ollamaModels: [],
+        testingLLM: false,
+        llmTestResult: null,
         saving: false,
         testing: false,
         testResult: null,
 
         async loadSettings() {
             try {
-                const [settingsRes, twitterRes] = await Promise.all([
+                const [settingsRes, twitterRes, llmRes] = await Promise.all([
                     fetch('/api/settings'),
-                    fetch('/api/settings/twitter-status')
+                    fetch('/api/settings/twitter-status'),
+                    fetch('/api/settings/llm')
                 ]);
 
                 if (settingsRes.ok) {
@@ -378,6 +523,9 @@ function settingsData() {
                 }
                 if (twitterRes.ok) {
                     this.twitter = await twitterRes.json();
+                }
+                if (llmRes.ok) {
+                    this.llmSettings = await llmRes.json();
                 }
             } catch (error) {
                 console.error('Failed to load settings:', error);
@@ -482,6 +630,61 @@ function settingsData() {
                 }
             } catch (error) {
                 showToast('Failed to save settings', 'error');
+            }
+        },
+
+        async saveLLMSettings() {
+            try {
+                const response = await fetch('/api/settings/llm', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        provider: this.llmSettings.provider,
+                        anthropic_model: this.llmSettings.anthropic_model,
+                        openai_model: this.llmSettings.openai_model,
+                        ollama_host: this.llmSettings.ollama_host,
+                        ollama_model: this.llmSettings.ollama_model
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('LLM settings saved', 'success');
+                } else {
+                    showToast('Failed to save LLM settings', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to save LLM settings', 'error');
+            }
+        },
+
+        async testLLMProvider() {
+            this.testingLLM = true;
+            this.llmTestResult = null;
+            try {
+                const response = await fetch('/api/settings/llm/test', {
+                    method: 'POST'
+                });
+                this.llmTestResult = await response.json();
+            } catch (error) {
+                this.llmTestResult = { success: false, message: 'Failed to test LLM provider' };
+            }
+            this.testingLLM = false;
+        },
+
+        async loadOllamaModels() {
+            try {
+                const response = await fetch('/api/settings/llm/ollama/models');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        this.ollamaModels = data.models;
+                        showToast(`Found ${data.models.length} Ollama models`, 'success');
+                    } else {
+                        showToast(data.error || 'Failed to load Ollama models', 'error');
+                    }
+                }
+            } catch (error) {
+                showToast('Failed to load Ollama models', 'error');
             }
         }
     }

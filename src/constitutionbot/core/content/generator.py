@@ -1,7 +1,7 @@
 """Content generator - main orchestrator for content creation."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from constitutionbot.core.constitution.retriever import ConstitutionRetriever
 from constitutionbot.core.content.formats import ContentFormatter, Script, Thread, Tweet
 from constitutionbot.core.content.templates import PromptTemplates
 from constitutionbot.core.content.validators import ContentValidator, ValidationResult
+from constitutionbot.core.llm import LLMProvider, get_llm_provider
 from constitutionbot.database.models import ConstitutionSection
 
 
@@ -42,13 +43,33 @@ class ContentGenerator:
     def __init__(
         self,
         session: AsyncSession,
-        claude_client: Optional[ClaudeClient] = None,
+        llm_provider: Optional[Union[LLMProvider, ClaudeClient]] = None,
+        claude_client: Optional[ClaudeClient] = None,  # Deprecated, for backward compat
     ):
         self.session = session
         self.retriever = ConstitutionRetriever(session)
-        self.claude = claude_client or get_claude_client()
+        # Support both new llm_provider and deprecated claude_client parameter
+        self._llm_provider = llm_provider or claude_client
+        self._llm_initialized = False
         self.formatter = ContentFormatter()
         self.validator = ContentValidator()
+
+    async def _get_llm(self) -> Union[LLMProvider, ClaudeClient]:
+        """Get the LLM provider, initializing if needed."""
+        if self._llm_provider is not None:
+            return self._llm_provider
+        if not self._llm_initialized:
+            self._llm_provider = await get_llm_provider(self.session)
+            self._llm_initialized = True
+        return self._llm_provider
+
+    @property
+    def claude(self) -> Union[LLMProvider, ClaudeClient]:
+        """Backward compatibility property. Use _get_llm() for async contexts."""
+        if self._llm_provider is None:
+            # Fallback for synchronous access (backward compatibility)
+            self._llm_provider = get_claude_client()
+        return self._llm_provider
 
     async def suggest_topic(self) -> TopicSuggestion:
         """Generate a topic suggestion (Mode 1: Bot Proposed)."""
@@ -67,7 +88,8 @@ class ContentGenerator:
         if context:
             prompt = f"Here are some constitutional sections for inspiration:\n\n{context}\n\n{prompt}"
 
-        response = self.claude.generate(
+        llm = await self._get_llm()
+        response = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.8,
@@ -126,7 +148,8 @@ class ContentGenerator:
 
         # Generate content
         prompt = PromptTemplates.get_tweet_prompt(topic=topic, context=context)
-        raw_content = self.claude.generate(
+        llm = await self._get_llm()
+        raw_content = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.7,
@@ -180,7 +203,8 @@ class ContentGenerator:
             context=context,
             num_tweets=num_tweets,
         )
-        raw_content = self.claude.generate(
+        llm = await self._get_llm()
+        raw_content = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.7,
@@ -235,7 +259,8 @@ class ContentGenerator:
             context=context,
             duration=duration,
         )
-        raw_content = self.claude.generate(
+        llm = await self._get_llm()
+        raw_content = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.7,
@@ -277,7 +302,8 @@ class ContentGenerator:
             mention_text=mention_text,
             context=context,
         )
-        raw_content = self.claude.generate(
+        llm = await self._get_llm()
+        raw_content = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.6,
@@ -328,7 +354,8 @@ class ContentGenerator:
             format_type=content_type,
             format_requirements=format_requirements,
         )
-        raw_content = self.claude.generate(
+        llm = await self._get_llm()
+        raw_content = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.7,
@@ -383,7 +410,8 @@ class ContentGenerator:
             format_type=content_type,
             max_length=max_length,
         )
-        raw_content = self.claude.generate(
+        llm = await self._get_llm()
+        raw_content = llm.generate(
             prompt=prompt,
             system_prompt=PromptTemplates.SYSTEM_PROMPT,
             temperature=0.7,

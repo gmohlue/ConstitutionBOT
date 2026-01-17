@@ -30,10 +30,23 @@ class Settings(BaseSettings):
     prompts_dir: Optional[Path] = Field(default=None)
     database_dir: Optional[Path] = Field(default=None)
 
+    # LLM Provider Selection
+    llm_provider: str = Field(default="anthropic")  # anthropic, openai, ollama
+
     # Anthropic API
     anthropic_api_key: SecretStr = Field(default=SecretStr(""))
     anthropic_model: str = Field(default="claude-sonnet-4-20250514")
     anthropic_max_tokens: int = Field(default=4096)
+
+    # OpenAI API
+    openai_api_key: SecretStr = Field(default=SecretStr(""))
+    openai_model: str = Field(default="gpt-4o")
+    openai_max_tokens: int = Field(default=4096)
+
+    # Ollama (Local LLM)
+    ollama_host: str = Field(default="http://localhost:11434")
+    ollama_model: str = Field(default="llama3.2")
+    ollama_max_tokens: int = Field(default=4096)
 
     # Twitter/X API
     twitter_api_key: SecretStr = Field(default=SecretStr(""))
