@@ -1,12 +1,17 @@
 import { test, expect, Page } from '@playwright/test';
 
-// Helper function to login
+// Helper function to login with robust waits
 async function login(page: Page) {
   await page.goto('/login');
+  // Wait for login form to be ready
+  await expect(page.locator('input[name="username"]')).toBeVisible();
   await page.fill('input[name="username"]', 'admin');
   await page.fill('input[name="password"]', 'change_this_password');
   await page.click('button[type="submit"]');
-  await expect(page).toHaveURL('/');
+  // Wait for redirect to complete and dashboard to load
+  await expect(page).toHaveURL('/', { timeout: 10000 });
+  // Wait for dashboard content to ensure page is fully loaded
+  await expect(page.locator('main')).toBeVisible();
 }
 
 test.describe('Navigation', () => {
