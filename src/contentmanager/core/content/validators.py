@@ -2,9 +2,12 @@
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from contentmanager.config import get_settings
+
+if TYPE_CHECKING:
+    from contentmanager.core.content.ai_pattern_filter import AIPatternFilter, AIPatternReport
 
 
 @dataclass
@@ -15,6 +18,8 @@ class ValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     suggestions: list[str] = field(default_factory=list)
+    ai_score: Optional[float] = None  # AI pattern score (0.0-1.0)
+    ai_pattern_report: Optional["AIPatternReport"] = None
 
     def add_error(self, message: str) -> None:
         """Add an error message."""
@@ -28,6 +33,13 @@ class ValidationResult:
     def add_suggestion(self, message: str) -> None:
         """Add a suggestion."""
         self.suggestions.append(message)
+
+    @property
+    def is_human_like(self) -> bool:
+        """Check if content passes human-likeness threshold."""
+        if self.ai_score is None:
+            return True  # No AI analysis performed
+        return self.ai_score < 0.5
 
 
 class ContentValidator:
@@ -225,3 +237,115 @@ class ContentValidator:
             suggestions.append("Consider adding a call to action")
 
         return suggestions
+
+    def validate_human_likeness(
+        self,
+        content: str,
+        threshold: float = 0.5
+    ) -> ValidationResult:
+        """Validate content for human-likeness using AI pattern detection.
+
+        Args:
+            content: Content to validate.
+            threshold: Maximum allowed AI score (0.0-1.0, default 0.5).
+
+        Returns:
+            ValidationResult with AI pattern analysis.
+        """
+        from contentmanager.core.content.ai_pattern_filter import AIPatternFilter
+
+        result = ValidationResult(is_valid=True)
+        filter_instance = AIPatternFilter()
+
+        # Analyze content for AI patterns
+        report = filter_instance.analyze(content)
+        result.ai_score = report.ai_score
+        result.ai_pattern_report = report
+
+        # Check threshold
+        if report.ai_score > threshold:
+            result.add_warning(
+                f"Content may appear AI-generated (score: {report.ai_score:.2f}, "
+                f"threshold: {threshold})"
+            )
+
+        # Add cliche warnings
+        cliche_patterns = [
+            p for p in report.patterns
+            if p.category.value in ("cliche_opener", "cliche_phrase")
+        ]
+        if cliche_patterns:
+            for pattern in cliche_patterns[:3]:  # Limit to top 3
+                result.add_warning(f"AI cliche detected: '{pattern.matched_text}'")
+
+        # Add corporate speak warnings
+        corporate_patterns = [
+            p for p in report.patterns
+            if p.category.value == "corporate_speak"
+        ]
+        if corporate_patterns:
+            words = [p.matched_text for p in corporate_patterns[:3]]
+            result.add_warning(f"Consider replacing: {', '.join(words)}")
+
+        # Add suggestions from report
+        for suggestion in report.suggestions:
+            result.add_suggestion(suggestion)
+
+        # Check sentence variance
+        if report.sentence_variance < 0.3:
+            result.add_suggestion(
+                "Vary sentence lengths for a more natural reading flow"
+            )
+
+        return result
+
+    def validate_with_ai_check(
+        self,
+        content: str,
+        content_type: str = "tweet",
+        ai_threshold: float = 0.5
+    ) -> ValidationResult:
+        """Combined validation: standard checks + AI pattern detection.
+
+        Args:
+            content: Content to validate.
+            content_type: Type of content ("tweet", "thread", "reply").
+            ai_threshold: Maximum allowed AI score.
+
+        Returns:
+            ValidationResult with both standard and AI pattern validation.
+        """
+        # Standard validation based on content type
+        if content_type == "tweet":
+            result = self.validate_tweet(content)
+        elif content_type == "thread":
+            # For single content string, validate as tweet
+            result = self.validate_tweet(content)
+        else:
+            result = self.validate_tweet(content)
+
+        # Add AI pattern validation
+        ai_result = self.validate_human_likeness(content, ai_threshold)
+
+        # Merge AI validation results
+        result.ai_score = ai_result.ai_score
+        result.ai_pattern_report = ai_result.ai_pattern_report
+
+        for warning in ai_result.warnings:
+            result.add_warning(warning)
+
+        for suggestion in ai_result.suggestions:
+            if suggestion not in result.suggestions:
+                result.add_suggestion(suggestion)
+
+        return result
+
+    def get_ai_cliche_phrases(self) -> list[str]:
+        """Get list of AI cliche phrases to avoid."""
+        from contentmanager.core.content.ai_pattern_filter import AIPatternFilter
+
+        return (
+            AIPatternFilter.CLICHE_OPENERS +
+            AIPatternFilter.CLICHE_PHRASES +
+            AIPatternFilter.CORPORATE_SPEAK
+        )

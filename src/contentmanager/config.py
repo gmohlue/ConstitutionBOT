@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     max_thread_tweets: int = Field(default=10)
     default_hashtags: list[str] = Field(default_factory=lambda: ["#SAConstitution", "#CivicEducation"])
 
+    # Synthesis System Settings
+    synthesis_enabled: bool = Field(default=True)
+    default_synthesis_mode: str = Field(default="CHALLENGE")  # EXPLAIN, CONTRAST, CHALLENGE, APPLY, STORY, MYTH_BUST, IMPLICATIONS
+    ai_pattern_threshold: float = Field(default=0.5)  # Max allowed AI score (0.0-1.0)
+    humanization_retries: int = Field(default=2)  # Number of humanization retry attempts
+    default_persona: str = Field(default="conversational")  # conversational, thoughtful, energetic, serious, warm, direct
+    formality_level: float = Field(default=0.4)  # 0.0 (casual) to 1.0 (formal)
+    use_scenarios: bool = Field(default=True)  # Whether to include scenario context in synthesis
+
     @model_validator(mode="after")
     def set_derived_paths(self) -> "Settings":
         """Set derived paths after initialization."""

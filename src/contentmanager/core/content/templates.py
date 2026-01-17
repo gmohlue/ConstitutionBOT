@@ -465,3 +465,260 @@ Format as JSON array:
             context=context or f"Starting a new conversation about {ctx.document_short_name}",
             **params,
         )
+
+    # ========================================================================
+    # SYNTHESIS PROMPTS - For intelligent content synthesis system
+    # ========================================================================
+
+    INSIGHT_EXTRACTION_PROMPT = """Analyze this provision from {document_short_name} deeply:
+
+{section_text}
+
+Extract the following insights:
+
+1. CORE PRINCIPLE: What fundamental idea does this protect or establish?
+   - What value or right is at the heart of this provision?
+   - Why would the framers have included this?
+
+2. PRACTICAL MEANING: How does this affect someone's daily life?
+   - Give a concrete example of when this matters
+   - Who benefits from this provision and how?
+
+3. COMMON MISCONCEPTION: What do people often get wrong about this?
+   - What's the gap between public perception and reality?
+   - What nuance do people miss?
+
+4. TENSION: What competing values does this balance?
+   - What's the trade-off inherent in this provision?
+   - When might this provision conflict with other rights or interests?
+
+5. ANALOGY: Compare this to something everyone understands
+   - Use everyday scenarios or objects
+   - Make the abstract concrete
+
+Format your response as JSON:
+{{
+    "core_principle": "...",
+    "practical_meaning": "...",
+    "common_misconception": "...",
+    "tension": "...",
+    "analogy": "...",
+    "keywords": ["...", "..."]
+}}"""
+
+    SYNTHESIS_PROMPT = """Given these insights about {topic}:
+
+{insights}
+
+Create original commentary that:
+1. Offers a fresh perspective not immediately obvious from the text
+2. Connects to everyday experience in {scenario_category}
+3. Challenges a common assumption OR reveals a hidden implication
+4. Uses concrete, specific language (not abstract generalities)
+
+Synthesis Mode: {mode}
+Voice: {persona_description}
+
+== CRITICAL: DO NOT ==
+- Start with "It's important to note", "In today's world", or similar AI cliches
+- Use words like "delve", "unpack", "robust", "leverage", "foster", "empower"
+- Structure as "First... Second... Third..." or "Firstly... Secondly..."
+- End with a generic call to action like "What do you think?" or "Share your thoughts"
+- Use phrases like "plays a crucial role" or "serves as a reminder"
+
+== INSTEAD, DO ==
+- Start mid-thought or with a specific observation
+- Use contractions naturally ("it's", "don't", "they're")
+- Include one slightly imperfect element (dash, parenthetical, sentence fragment)
+- End with a thought-provoking angle, not a summary
+- Sound like a thoughtful person sharing an insight, not a press release
+
+{additional_guidance}
+
+Output only the synthesized content, nothing else."""
+
+    HUMANIZATION_PROMPT = """Rewrite this content to sound more natural and human:
+
+Original: {content}
+
+Transform it by:
+1. Varying sentence lengths (mix short punchy with longer flowing)
+2. Using contractions where natural
+3. Adding one slightly imperfect element (dash, parenthetical, fragment)
+4. Starting differently than "This" or "The" or "It's important"
+5. Avoiding list structures unless truly necessary
+6. Replacing any corporate-speak with everyday words
+
+The content should sound like a real person wrote it while having coffee with a friend.
+
+Voice guidance: {persona_description}
+
+Output only the rewritten content, nothing else."""
+
+    TWEET_SYNTHESIS_PROMPT = """Create an educational tweet about {topic} from {document_short_name}.
+
+Insight to convey:
+{insight_context}
+
+Scenario context:
+{scenario}
+
+== FORMAT REQUIREMENTS ==
+- Maximum 280 characters
+- Must include a citation (e.g., "{section_label} X")
+- Include 1 relevant hashtag maximum
+- NO legal advice
+
+== WRITING STYLE ==
+Voice: {persona_description}
+
+Opening style (choose one that fits):
+- Start with a specific observation
+- Open with a brief scenario
+- Lead with a surprising angle
+- Begin with what most people miss
+
+DO NOT:
+- Start with "Did you know" or "It's important to note"
+- Use words like "delve", "unpack", "robust"
+- End with "What do you think?" or "Share your thoughts"
+
+DO:
+- Sound like an interesting person sharing an insight
+- Use contractions naturally
+- Be specific rather than general
+- Make it memorable
+
+Generate only the tweet text, nothing else."""
+
+    THREAD_SYNTHESIS_PROMPT = """Create an educational Twitter thread about {topic} from {document_short_name}.
+
+Insights to convey:
+{insight_context}
+
+Scenario context:
+{scenario}
+
+Thread structure: {thread_structure}
+
+== FORMAT REQUIREMENTS ==
+- Create {num_tweets} connected tweets (280 chars max each)
+- Include {section_label_lower} citations throughout
+- Include relevant hashtags only in the final tweet
+- NO legal advice
+
+== WRITING STYLE ==
+Voice: {persona_description}
+
+Thread flow:
+1. Hook that grabs attention (NOT "Thread:" or "Did you know")
+2. Build understanding progressively
+3. Each tweet should flow naturally to the next
+4. End with insight that stays with the reader
+
+DO NOT:
+- Number tweets as "1/5", "2/5" (let the thread stand alone)
+- Use "Let's dive in" or "Let's unpack this"
+- Structure as "First... Second... Third..."
+- End with generic engagement bait
+
+DO:
+- Open with something specific and interesting
+- Use transitions that feel natural
+- Vary sentence length within and across tweets
+- End with something worth thinking about
+
+Format your response as:
+TWEET 1: [content]
+TWEET 2: [content]
+...and so on"""
+
+    @classmethod
+    def get_insight_extraction_prompt(
+        cls,
+        section_text: str,
+        doc_context: Optional[DocumentContext] = None,
+    ) -> str:
+        """Get formatted insight extraction prompt."""
+        params = cls._get_doc_params(doc_context)
+        return cls.INSIGHT_EXTRACTION_PROMPT.format(
+            section_text=section_text,
+            **params,
+        )
+
+    @classmethod
+    def get_synthesis_prompt(
+        cls,
+        topic: str,
+        insights: str,
+        mode: str = "CHALLENGE",
+        scenario_category: str = "daily life",
+        persona_description: str = "conversational and thoughtful",
+        additional_guidance: str = "",
+        doc_context: Optional[DocumentContext] = None,
+    ) -> str:
+        """Get formatted synthesis prompt."""
+        params = cls._get_doc_params(doc_context)
+        return cls.SYNTHESIS_PROMPT.format(
+            topic=topic,
+            insights=insights,
+            mode=mode,
+            scenario_category=scenario_category,
+            persona_description=persona_description,
+            additional_guidance=additional_guidance,
+            **params,
+        )
+
+    @classmethod
+    def get_humanization_prompt(
+        cls,
+        content: str,
+        persona_description: str = "conversational and natural",
+    ) -> str:
+        """Get formatted humanization prompt."""
+        return cls.HUMANIZATION_PROMPT.format(
+            content=content,
+            persona_description=persona_description,
+        )
+
+    @classmethod
+    def get_tweet_synthesis_prompt(
+        cls,
+        topic: str,
+        insight_context: str,
+        scenario: str = "",
+        persona_description: str = "conversational",
+        doc_context: Optional[DocumentContext] = None,
+    ) -> str:
+        """Get formatted tweet synthesis prompt."""
+        params = cls._get_doc_params(doc_context)
+        return cls.TWEET_SYNTHESIS_PROMPT.format(
+            topic=topic,
+            insight_context=insight_context,
+            scenario=scenario or "everyday situations",
+            persona_description=persona_description,
+            **params,
+        )
+
+    @classmethod
+    def get_thread_synthesis_prompt(
+        cls,
+        topic: str,
+        insight_context: str,
+        num_tweets: int = 5,
+        thread_structure: str = "progressive revelation",
+        scenario: str = "",
+        persona_description: str = "conversational",
+        doc_context: Optional[DocumentContext] = None,
+    ) -> str:
+        """Get formatted thread synthesis prompt."""
+        params = cls._get_doc_params(doc_context)
+        return cls.THREAD_SYNTHESIS_PROMPT.format(
+            topic=topic,
+            insight_context=insight_context,
+            num_tweets=num_tweets,
+            thread_structure=thread_structure,
+            scenario=scenario or "everyday situations",
+            persona_description=persona_description,
+            **params,
+        )
