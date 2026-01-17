@@ -1,5 +1,17 @@
 """API schemas for the dashboard."""
 
+from constitutionbot.dashboard.schemas.chat import (
+    ChatMessageRequest,
+    ChatMessageResponse,
+    ConversationCreateRequest,
+    ConversationListResponse,
+    ConversationResponse,
+    ConversationUpdateRequest,
+    FinalizeContentRequest,
+    FinalizeContentResponse,
+    TopicSuggestionItem,
+    TopicSuggestionsResponse,
+)
 from constitutionbot.dashboard.schemas.requests import (
     ContentApproveRequest,
     ContentGenerateRequest,
@@ -30,6 +42,11 @@ __all__ = [
     "ReplyApproveRequest",
     "ReplyRegenerateRequest",
     "TopicSuggestRequest",
+    # Chat requests
+    "ConversationCreateRequest",
+    "ChatMessageRequest",
+    "FinalizeContentRequest",
+    "ConversationUpdateRequest",
     # Responses
     "ContentQueueResponse",
     "ReplyQueueResponse",
@@ -38,4 +55,11 @@ __all__ = [
     "TopicSuggestionResponse",
     "HistoryResponse",
     "StatsResponse",
+    # Chat responses
+    "ConversationResponse",
+    "ConversationListResponse",
+    "ChatMessageResponse",
+    "TopicSuggestionsResponse",
+    "TopicSuggestionItem",
+    "FinalizeContentResponse",
 ]

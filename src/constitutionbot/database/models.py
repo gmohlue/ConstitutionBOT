@@ -24,6 +24,31 @@ class ContentStatus(str, Enum):
     POSTED = "posted"
 
 
+class ConversationStatus(str, Enum):
+    """Status for chat conversations."""
+
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    ARCHIVED = "archived"
+
+
+class MessageRole(str, Enum):
+    """Role of a message sender in a conversation."""
+
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+
+
+class MessageType(str, Enum):
+    """Type of message content."""
+
+    TEXT = "text"
+    TOPIC_SUGGESTION = "topic_suggestion"
+    GENERATED_CONTENT = "generated_content"
+    ACTION = "action"
+
+
 class ContentType(str, Enum):
     """Types of content that can be generated."""
 
@@ -178,3 +203,52 @@ class BotSettings(Base):
 
     def __repr__(self) -> str:
         return f"<BotSettings(key={self.key})>"
+
+
+class Conversation(Base):
+    """Chat conversation for interactive Q&A and content generation."""
+
+    __tablename__ = "conversations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(50), default=ConversationStatus.ACTIVE.value, index=True
+    )
+    mode: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    topic: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    context_sections: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<Conversation(id={self.id}, status={self.status}, title={self.title[:30] if self.title else None})>"
+
+
+class ConversationMessage(Base):
+    """Individual message in a chat conversation."""
+
+    __tablename__ = "conversation_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[int] = mapped_column(
+        Integer, nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(String(50), nullable=False)
+    message_type: Mapped[str] = mapped_column(
+        String(50), default=MessageType.TEXT.value
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    structured_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    citations: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<ConversationMessage(id={self.id}, role={self.role}, conversation_id={self.conversation_id})>"

@@ -125,6 +125,70 @@ Output Format:
             temperature=temperature,
         )
 
+    def generate_with_messages(
+        self,
+        messages: list[dict],
+        system_prompt: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: float = 0.7,
+    ) -> str:
+        """Generate a response from a multi-turn conversation.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys
+                     Roles should be 'user' or 'assistant'
+            system_prompt: Optional system prompt for context
+            max_tokens: Maximum tokens in response (default from settings)
+            temperature: Sampling temperature (0.0-1.0)
+
+        Returns:
+            The generated text response
+        """
+        # Validate messages format
+        validated_messages = []
+        for msg in messages:
+            if msg.get("role") in ("user", "assistant") and msg.get("content"):
+                validated_messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"],
+                })
+
+        if not validated_messages:
+            raise ValueError("No valid messages provided")
+
+        # Ensure conversation starts with user message
+        if validated_messages[0]["role"] != "user":
+            validated_messages.insert(0, {
+                "role": "user",
+                "content": "Hello",
+            })
+
+        # Ensure alternating messages (Claude API requirement)
+        cleaned_messages = []
+        last_role = None
+        for msg in validated_messages:
+            if msg["role"] != last_role:
+                cleaned_messages.append(msg)
+                last_role = msg["role"]
+            else:
+                # Merge consecutive same-role messages
+                cleaned_messages[-1]["content"] += "\n\n" + msg["content"]
+
+        kwargs = {
+            "model": self.settings.anthropic_model,
+            "max_tokens": max_tokens or self.settings.anthropic_max_tokens,
+            "messages": cleaned_messages,
+            "temperature": temperature,
+        }
+
+        if system_prompt:
+            kwargs["system"] = system_prompt
+
+        response = self.client.messages.create(**kwargs)
+
+        # Extract text from response
+        return response.content[0].text
+
 
 # Singleton instance
 _claude_client: Optional[ClaudeClient] = None

@@ -18,6 +18,7 @@ from constitutionbot.dashboard.auth import (
 )
 from constitutionbot.dashboard.routers import (
     calendar_router,
+    chat_router,
     constitution_router,
     content_queue_router,
     history_router,
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
 
     # Include API routers
     app.include_router(calendar_router)
+    app.include_router(chat_router)
     app.include_router(content_queue_router)
     app.include_router(reply_queue_router)
     app.include_router(constitution_router)
@@ -164,6 +166,17 @@ def create_app() -> FastAPI:
         return templates.TemplateResponse(
             "generate.html",
             {"request": request, "active_page": "generate"},
+        )
+
+    @app.get("/chat", response_class=HTMLResponse)
+    async def chat_page(
+        request: Request,
+        _: str = Depends(require_auth),
+    ):
+        """Interactive chat page."""
+        return templates.TemplateResponse(
+            "chat.html",
+            {"request": request, "active_page": "chat"},
         )
 
     @app.get("/calendar", response_class=HTMLResponse)

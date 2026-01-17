@@ -252,3 +252,131 @@ TAKEAWAY: [Key lesson from the script]"""
             context=context,
             duration=duration,
         )
+
+    # Chat-specific prompts
+    CHAT_SYSTEM_PROMPT = """You are a friendly and knowledgeable Civic Education Assistant specializing in the Constitution of the Republic of South Africa, 1996.
+
+You engage in helpful conversations to:
+1. Answer questions about constitutional rights and provisions
+2. Explain sections in simple, accessible language
+3. Help users explore topics through dialogue
+4. Assist with generating educational content (tweets, threads, scripts)
+
+## Conversation Guidelines:
+- Be conversational and approachable
+- Use clear, simple language
+- Always cite specific sections when discussing constitutional provisions (e.g., "Section 9")
+- Connect concepts to everyday life and real-world scenarios
+- Ask clarifying questions when needed
+- Be helpful but never provide specific legal advice
+
+## Response Format:
+- Keep responses concise but informative
+- Use bullet points for lists
+- Cite sections naturally in your responses
+- When discussing content generation, explain what you're creating
+
+## Safety:
+- Never provide personal legal advice
+- Redirect users to qualified legal professionals for specific legal matters
+- Be politically neutral
+- Include appropriate context for sensitive topics
+
+Remember: You're here to educate and engage, making the Constitution accessible to all South Africans."""
+
+    CHAT_INTENT_DETECTION_PROMPT = """Analyze this user message and determine their intent.
+
+User Message: "{message}"
+
+Previous Context: {context}
+
+Determine:
+1. INTENT: What does the user want? (question, generate_content, refine_content, explore_topic, general_chat)
+2. TOPIC: What constitutional topic/section is relevant? (if any)
+3. CONTENT_TYPE: If generating content, what type? (tweet, thread, script, none)
+4. SECTIONS: Which constitutional sections might be relevant? (list section numbers or "none")
+
+Response format (JSON):
+{{
+    "intent": "question|generate_content|refine_content|explore_topic|general_chat",
+    "topic": "extracted topic or null",
+    "content_type": "tweet|thread|script|none",
+    "sections": [section_numbers] or [],
+    "confidence": 0.0-1.0
+}}"""
+
+    CHAT_REFINEMENT_PROMPT = """Refine the following content based on user feedback.
+
+Original Content:
+{original_content}
+
+Content Type: {content_type}
+
+User Feedback: {feedback}
+
+Constitutional Context:
+{context}
+
+Instructions:
+1. Address the user's specific feedback
+2. Maintain the original format and purpose
+3. Keep constitutional accuracy and citations
+4. Ensure content remains within format constraints (e.g., 280 chars for tweets)
+
+Generate the refined content:"""
+
+    CHAT_TOPIC_SUGGESTION_PROMPT = """Based on the conversation context and the South African Constitution, suggest 3 engaging topics for educational content.
+
+Conversation Context: {context}
+
+Consider:
+1. Topics that build on the current discussion
+2. Related but unexplored constitutional provisions
+3. Timely or relevant civic education angles
+
+For each suggestion provide:
+- Topic title (engaging and clear)
+- Primary section(s) to reference
+- Brief angle/hook for the content
+- Why this would be valuable to explore
+
+Format as JSON array:
+[
+    {{
+        "title": "topic title",
+        "sections": [section_numbers],
+        "angle": "hook or angle",
+        "reason": "why this is valuable"
+    }}
+]"""
+
+    @classmethod
+    def get_chat_intent_prompt(cls, message: str, context: str) -> str:
+        """Get formatted intent detection prompt."""
+        return cls.CHAT_INTENT_DETECTION_PROMPT.format(
+            message=message,
+            context=context or "No previous context",
+        )
+
+    @classmethod
+    def get_chat_refinement_prompt(
+        cls,
+        original_content: str,
+        content_type: str,
+        feedback: str,
+        context: str,
+    ) -> str:
+        """Get formatted content refinement prompt."""
+        return cls.CHAT_REFINEMENT_PROMPT.format(
+            original_content=original_content,
+            content_type=content_type,
+            feedback=feedback,
+            context=context,
+        )
+
+    @classmethod
+    def get_chat_topic_suggestions_prompt(cls, context: str) -> str:
+        """Get formatted topic suggestions prompt."""
+        return cls.CHAT_TOPIC_SUGGESTION_PROMPT.format(
+            context=context or "Starting a new conversation about the Constitution",
+        )
