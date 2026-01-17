@@ -1,8 +1,8 @@
 """Bot settings API endpoints."""
 
-from typing import Any
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from constitutionbot.dashboard.auth import require_auth
 from constitutionbot.dashboard.schemas.requests import SettingsUpdateRequest
 from constitutionbot.dashboard.schemas.responses import MessageResponse
 from constitutionbot.database import get_session
+from constitutionbot.database.repositories.credentials import CredentialsRepository
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
@@ -186,3 +187,227 @@ async def get_rate_limits(
             "endpoints": {},
             "app_limit": {"tweets_per_day": 50, "tweets_per_month": 1500},
         }
+
+
+# ============================================================================
+# Credentials Management Endpoints
+# ============================================================================
+
+
+class CredentialStatusResponse(BaseModel):
+    """Response for credential status."""
+
+    configured: bool
+    masked_value: Optional[str] = None
+
+
+class CredentialsStatusResponse(BaseModel):
+    """Response for all credentials status."""
+
+    twitter_api_key: CredentialStatusResponse
+    twitter_api_secret: CredentialStatusResponse
+    twitter_access_token: CredentialStatusResponse
+    twitter_access_secret: CredentialStatusResponse
+    twitter_bearer_token: CredentialStatusResponse
+    openai_api_key: CredentialStatusResponse
+
+
+class SetCredentialRequest(BaseModel):
+    """Request to set a credential."""
+
+    key: str
+    value: str
+
+
+class SetCredentialsRequest(BaseModel):
+    """Request to set multiple credentials at once."""
+
+    twitter_api_key: Optional[str] = None
+    twitter_api_secret: Optional[str] = None
+    twitter_access_token: Optional[str] = None
+    twitter_access_secret: Optional[str] = None
+    twitter_bearer_token: Optional[str] = None
+    openai_api_key: Optional[str] = None
+
+
+@router.get("/credentials", response_model=CredentialsStatusResponse)
+async def get_credentials_status(
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get status of all API credentials (masked values, not actual secrets)."""
+    repo = CredentialsRepository(session)
+    status = await repo.get_credentials_status()
+
+    return CredentialsStatusResponse(
+        twitter_api_key=CredentialStatusResponse(**status[repo.TWITTER_API_KEY]),
+        twitter_api_secret=CredentialStatusResponse(**status[repo.TWITTER_API_SECRET]),
+        twitter_access_token=CredentialStatusResponse(**status[repo.TWITTER_ACCESS_TOKEN]),
+        twitter_access_secret=CredentialStatusResponse(**status[repo.TWITTER_ACCESS_SECRET]),
+        twitter_bearer_token=CredentialStatusResponse(**status[repo.TWITTER_BEARER_TOKEN]),
+        openai_api_key=CredentialStatusResponse(**status[repo.OPENAI_API_KEY]),
+    )
+
+
+@router.post("/credentials", response_model=MessageResponse)
+async def set_credentials(
+    request: SetCredentialsRequest,
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Set multiple API credentials at once.
+
+    Only non-null values will be updated.
+    """
+    repo = CredentialsRepository(session)
+    updated = []
+
+    # Map request fields to credential keys
+    credential_map = {
+        "twitter_api_key": repo.TWITTER_API_KEY,
+        "twitter_api_secret": repo.TWITTER_API_SECRET,
+        "twitter_access_token": repo.TWITTER_ACCESS_TOKEN,
+        "twitter_access_secret": repo.TWITTER_ACCESS_SECRET,
+        "twitter_bearer_token": repo.TWITTER_BEARER_TOKEN,
+        "openai_api_key": repo.OPENAI_API_KEY,
+    }
+
+    for field, key in credential_map.items():
+        value = getattr(request, field)
+        if value is not None and value.strip():
+            await repo.set_credential(key, value.strip())
+            updated.append(field)
+
+    await session.commit()
+
+    if not updated:
+        return MessageResponse(
+            success=False,
+            message="No credentials provided to update",
+        )
+
+    return MessageResponse(
+        success=True,
+        message=f"Updated {len(updated)} credential(s): {', '.join(updated)}",
+        data={"updated": updated},
+    )
+
+
+@router.put("/credentials/{key}", response_model=MessageResponse)
+async def set_single_credential(
+    key: str,
+    request: SetCredentialRequest,
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Set a single API credential."""
+    repo = CredentialsRepository(session)
+
+    if key not in repo.CREDENTIAL_KEYS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid credential key. Valid keys: {', '.join(repo.CREDENTIAL_KEYS)}",
+        )
+
+    if not request.value.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Credential value cannot be empty",
+        )
+
+    await repo.set_credential(key, request.value.strip())
+    await session.commit()
+
+    return MessageResponse(
+        success=True,
+        message=f"Credential '{key}' updated successfully",
+    )
+
+
+@router.delete("/credentials/{key}", response_model=MessageResponse)
+async def delete_credential(
+    key: str,
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Delete a single API credential."""
+    repo = CredentialsRepository(session)
+
+    if key not in repo.CREDENTIAL_KEYS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid credential key. Valid keys: {', '.join(repo.CREDENTIAL_KEYS)}",
+        )
+
+    deleted = await repo.delete_credential(key)
+    await session.commit()
+
+    if not deleted:
+        return MessageResponse(
+            success=False,
+            message=f"Credential '{key}' not found",
+        )
+
+    return MessageResponse(
+        success=True,
+        message=f"Credential '{key}' deleted successfully",
+    )
+
+
+@router.post("/credentials/test", response_model=MessageResponse)
+async def test_credentials(
+    _: str = Depends(require_auth),
+    session: AsyncSession = Depends(get_session),
+):
+    """Test if the stored credentials work with Twitter API."""
+    repo = CredentialsRepository(session)
+    creds = await repo.get_all_credentials()
+
+    # Check if all required Twitter credentials are present
+    required = [
+        repo.TWITTER_API_KEY,
+        repo.TWITTER_API_SECRET,
+        repo.TWITTER_ACCESS_TOKEN,
+        repo.TWITTER_ACCESS_SECRET,
+    ]
+
+    missing = [k for k in required if not creds.get(k)]
+    if missing:
+        return MessageResponse(
+            success=False,
+            message=f"Missing required credentials: {', '.join(missing)}",
+            data={"missing": missing},
+        )
+
+    # Try to verify with Twitter
+    try:
+        import tweepy
+
+        auth = tweepy.OAuth1UserHandler(
+            creds[repo.TWITTER_API_KEY],
+            creds[repo.TWITTER_API_SECRET],
+            creds[repo.TWITTER_ACCESS_TOKEN],
+            creds[repo.TWITTER_ACCESS_SECRET],
+        )
+        api = tweepy.API(auth)
+        user = api.verify_credentials()
+
+        return MessageResponse(
+            success=True,
+            message=f"Successfully connected as @{user.screen_name}",
+            data={
+                "screen_name": user.screen_name,
+                "user_id": str(user.id),
+                "followers_count": user.followers_count,
+            },
+        )
+    except tweepy.errors.Unauthorized:
+        return MessageResponse(
+            success=False,
+            message="Invalid credentials. Please check your API keys and tokens.",
+        )
+    except Exception as e:
+        return MessageResponse(
+            success=False,
+            message=f"Error testing credentials: {str(e)}",
+        )

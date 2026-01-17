@@ -10,21 +10,67 @@ from constitutionbot.config import get_settings
 class TwitterClient:
     """Wrapper for Twitter API v2 using Tweepy."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        api_secret: Optional[str] = None,
+        access_token: Optional[str] = None,
+        access_secret: Optional[str] = None,
+        bearer_token: Optional[str] = None,
+    ):
+        """Initialize the Twitter client.
+
+        Args:
+            api_key: Twitter API key (Consumer Key). If not provided, uses config.
+            api_secret: Twitter API secret (Consumer Secret). If not provided, uses config.
+            access_token: Twitter access token. If not provided, uses config.
+            access_secret: Twitter access token secret. If not provided, uses config.
+            bearer_token: Twitter bearer token. If not provided, uses config.
+        """
         self.settings = get_settings()
         self._client: Optional[tweepy.Client] = None
         self._api: Optional[tweepy.API] = None
+
+        # Use provided credentials or fall back to settings
+        self._api_key = api_key or self.settings.twitter_api_key.get_secret_value()
+        self._api_secret = api_secret or self.settings.twitter_api_secret.get_secret_value()
+        self._access_token = access_token or self.settings.twitter_access_token.get_secret_value()
+        self._access_secret = access_secret or self.settings.twitter_access_secret.get_secret_value()
+        self._bearer_token = bearer_token or self.settings.twitter_bearer_token.get_secret_value()
+
+    @classmethod
+    async def from_database(cls, session) -> "TwitterClient":
+        """Create a TwitterClient using credentials stored in the database.
+
+        Args:
+            session: SQLAlchemy async session
+
+        Returns:
+            TwitterClient instance with database credentials
+        """
+        from constitutionbot.database.repositories.credentials import CredentialsRepository
+
+        repo = CredentialsRepository(session)
+        creds = await repo.get_all_credentials()
+
+        return cls(
+            api_key=creds.get(repo.TWITTER_API_KEY),
+            api_secret=creds.get(repo.TWITTER_API_SECRET),
+            access_token=creds.get(repo.TWITTER_ACCESS_TOKEN),
+            access_secret=creds.get(repo.TWITTER_ACCESS_SECRET),
+            bearer_token=creds.get(repo.TWITTER_BEARER_TOKEN),
+        )
 
     @property
     def client(self) -> tweepy.Client:
         """Get or create the Tweepy v2 client."""
         if self._client is None:
             self._client = tweepy.Client(
-                bearer_token=self.settings.twitter_bearer_token.get_secret_value() or None,
-                consumer_key=self.settings.twitter_api_key.get_secret_value(),
-                consumer_secret=self.settings.twitter_api_secret.get_secret_value(),
-                access_token=self.settings.twitter_access_token.get_secret_value(),
-                access_token_secret=self.settings.twitter_access_secret.get_secret_value(),
+                bearer_token=self._bearer_token or None,
+                consumer_key=self._api_key,
+                consumer_secret=self._api_secret,
+                access_token=self._access_token,
+                access_token_secret=self._access_secret,
                 wait_on_rate_limit=True,
             )
         return self._client
@@ -34,10 +80,10 @@ class TwitterClient:
         """Get or create the Tweepy v1.1 API (for some operations)."""
         if self._api is None:
             auth = tweepy.OAuth1UserHandler(
-                self.settings.twitter_api_key.get_secret_value(),
-                self.settings.twitter_api_secret.get_secret_value(),
-                self.settings.twitter_access_token.get_secret_value(),
-                self.settings.twitter_access_secret.get_secret_value(),
+                self._api_key,
+                self._api_secret,
+                self._access_token,
+                self._access_secret,
             )
             self._api = tweepy.API(auth, wait_on_rate_limit=True)
         return self._api
