@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Constitution - Content Manager{% endblock %}
+{% block title %}Document - Content Manager{% endblock %}
 {% block page_title %}Document Management{% endblock %}
 
 {% block content %}
-<div x-data="constitutionData()" x-init="loadSummary()">
+<div x-data="documentData()" x-init="loadSummary()">
     <!-- Upload Section -->
     <div class="bg-white shadow rounded-lg">
         <div class="px-4 py-5 sm:p-6">
             <h3 class="text-base font-semibold leading-6 text-gray-900">Upload Document</h3>
-            <p class="mt-1 text-sm text-gray-500">Upload the SA Constitution document (PDF or TXT format)</p>
+            <p class="mt-1 text-sm text-gray-500">Upload a document (PDF or TXT format)</p>
 
             <div class="mt-4">
                 <div class="flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10"
@@ -51,7 +51,7 @@
         <div class="px-4 py-5 sm:p-6">
             <div class="flex items-center justify-between">
                 <h3 class="text-base font-semibold leading-6 text-gray-900">Document Status</h3>
-                <button x-show="summary.is_loaded" @click="clearConstitution()" class="text-sm text-red-600 hover:text-red-500">
+                <button x-show="summary.is_loaded" @click="clearDocument()" class="text-sm text-red-600 hover:text-red-500">
                     Clear & Re-upload
                 </button>
             </div>
@@ -171,7 +171,7 @@
 </div>
 
 <script>
-function constitutionData() {
+function documentData() {
     return {
         summary: { is_loaded: false, chapters: [], total_sections: 0 },
         sections: [],
@@ -232,7 +232,7 @@ function constitutionData() {
 
                 if (response.ok) {
                     const data = await response.json();
-                    showToast(`Constitution uploaded: ${data.chapters_count} chapters, ${data.sections_count} sections`, 'success');
+                    showToast(`Document uploaded: ${data.chapters_count} chapters, ${data.sections_count} sections`, 'success');
                     this.loadSummary();
                 } else {
                     const error = await response.json();
@@ -255,7 +255,7 @@ function constitutionData() {
             if (file) this.uploadFile(file);
         },
 
-        async clearConstitution() {
+        async clearDocument() {
             if (!confirm('Are you sure you want to clear the document? You will need to re-upload.')) return;
             try {
                 const response = await fetch('/api/documents', { method: 'DELETE' });

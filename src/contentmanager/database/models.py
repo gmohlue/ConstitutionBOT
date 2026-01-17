@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -221,6 +221,9 @@ class DocumentSection(Base):
     """Parsed document sections - supports any document type."""
 
     __tablename__ = "document_sections"
+    __table_args__ = (
+        UniqueConstraint("document_id", "section_num", name="uq_document_section"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     document_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)

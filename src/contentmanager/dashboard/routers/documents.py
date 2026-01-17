@@ -64,6 +64,9 @@ async def upload_document(
     try:
         document = loader.parse_file(upload_path, name=doc_name, short_name=short_name)
     except Exception as e:
+        # Clean up the uploaded file on parse failure
+        if upload_path.exists():
+            upload_path.unlink()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to parse document: {str(e)}",

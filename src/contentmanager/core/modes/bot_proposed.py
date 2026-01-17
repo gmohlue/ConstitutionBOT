@@ -157,7 +157,7 @@ class BotProposedMode:
         so this method specifically targets those sections.
         """
         from contentmanager.core.document.retriever import DocumentRetriever
-        import random
+        import secrets
 
         retriever = DocumentRetriever(self.session)
 
@@ -168,7 +168,7 @@ class BotProposedMode:
             return await self.suggest_and_generate(content_type)
 
         # Pick a random section from Bill of Rights
-        section = random.choice(sections)
+        section = secrets.choice(sections)
 
         suggestion = TopicSuggestion(
             topic=f"Your Rights: Section {section.section_num} - {section.section_title or 'Bill of Rights'}",

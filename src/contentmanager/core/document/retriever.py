@@ -53,12 +53,12 @@ class DocumentRetriever:
 
     async def get_random_section(self) -> Optional[DocumentSection]:
         """Get a random section for content generation."""
-        import random
+        import secrets
 
         sections = await self.section_repo.get_all(limit=500)
         if not sections:
             return None
-        return random.choice(sections)
+        return secrets.choice(sections)
 
     async def get_sections_by_keyword(
         self, keyword: str, limit: int = 10
