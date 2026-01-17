@@ -83,7 +83,8 @@ async def upload_document(
             short_name=short_name,
             description=document.description,
         )
-        await doc_repo.set_active(db_doc.id)
+    # Always set the uploaded document as active
+    await doc_repo.set_active(db_doc.id)
 
     # Clear existing sections and add new ones
     repo = DocumentSectionRepository(session, document_id=db_doc.id)
