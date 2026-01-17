@@ -1,7 +1,10 @@
 """Main bot runner that coordinates all Twitter operations."""
 
 import asyncio
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from contentmanager.config import get_settings
 from contentmanager.core.modes.bot_proposed import BotProposedMode
@@ -65,10 +68,10 @@ class ContentManagerBot:
                     )
                     await session.commit()
 
-                    print(f"Auto-generated content: {result.suggestion.topic}")
+                    logger.info("Auto-generated content: %s", result.suggestion.topic)
 
             except Exception as e:
-                print(f"Error in auto-generate: {e}")
+                logger.error("Error in auto-generate: %s", e, exc_info=True)
 
             await asyncio.sleep(self.settings.auto_generate_interval)
 
@@ -78,7 +81,7 @@ class ContentManagerBot:
             return
 
         self._running = True
-        print("Content Manager starting...")
+        logger.info("Content Manager starting...")
 
         tasks = []
 

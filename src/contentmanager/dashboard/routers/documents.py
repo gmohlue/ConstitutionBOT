@@ -38,7 +38,16 @@ async def upload_document(
             detail="No filename provided",
         )
 
-    suffix = Path(file.filename).suffix.lower()
+    # Sanitize filename to prevent path traversal attacks
+    # Extract just the filename, stripping any directory components
+    safe_filename = Path(file.filename).name
+    if not safe_filename or safe_filename.startswith('.'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename",
+        )
+
+    suffix = Path(safe_filename).suffix.lower()
     if suffix not in (".pdf", ".txt", ".text"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -46,7 +55,7 @@ async def upload_document(
         )
 
     # Save uploaded file
-    upload_path = settings.document_uploads_dir / file.filename
+    upload_path = settings.document_uploads_dir / safe_filename
     try:
         with open(upload_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
@@ -59,7 +68,7 @@ async def upload_document(
     # Parse the document
     loader = DocumentLoader()
     # Derive name from filename (remove extension)
-    doc_name = Path(file.filename).stem.replace("_", " ").replace("-", " ").title()
+    doc_name = Path(safe_filename).stem.replace("_", " ").replace("-", " ").title()
     short_name = doc_name[:50] if len(doc_name) > 50 else doc_name
     try:
         document = loader.parse_file(upload_path, name=doc_name, short_name=short_name)

@@ -1,9 +1,12 @@
 """Chat service for interactive conversations about documents."""
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Optional, Union
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -260,8 +263,8 @@ class ChatService:
                     sections=data.get("sections", []),
                     confidence=data.get("confidence", 0.5),
                 )
-        except (json.JSONDecodeError, Exception):
-            pass
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning("Failed to parse intent from LLM response: %s", e)
 
         # Default to general chat
         return DetectedIntent(intent="general_chat", confidence=0.5)
@@ -383,7 +386,8 @@ Please answer this question about the {doc_context.document_short_name}. Cite sp
                         angle=item.get("angle", ""),
                         reason=item.get("reason", ""),
                     ))
-        except (json.JSONDecodeError, Exception):
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning("Failed to parse topic suggestions from LLM response: %s", e)
             # Fallback: generate a default suggestion
             suggestions.append(TopicSuggestion(
                 title="Your Right to Equality",

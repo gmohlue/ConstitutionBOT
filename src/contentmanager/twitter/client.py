@@ -1,10 +1,13 @@
 """Twitter API client wrapper using Tweepy."""
 
+import logging
 from typing import Optional
 
 import tweepy
 
 from contentmanager.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class TwitterClient:
@@ -131,7 +134,7 @@ class TwitterClient:
                 return str(response.data["id"])
             return None
         except Exception as e:
-            print(f"Failed to post tweet: {e}")
+            logger.error("Failed to post tweet: %s", e, exc_info=True)
             return None
 
     def post_thread(self, tweets: list[str]) -> list[str]:
@@ -205,7 +208,7 @@ class TwitterClient:
             return mentions
 
         except Exception as e:
-            print(f"Failed to get mentions: {e}")
+            logger.error("Failed to get mentions: %s", e, exc_info=True)
             return []
 
     def get_tweet_engagement(self, tweet_id: str) -> Optional[dict]:
@@ -234,7 +237,7 @@ class TwitterClient:
             return None
 
         except Exception as e:
-            print(f"Failed to get engagement: {e}")
+            logger.error("Failed to get engagement: %s", e, exc_info=True)
             return None
 
     def delete_tweet(self, tweet_id: str) -> bool:
@@ -250,7 +253,7 @@ class TwitterClient:
             response = self.client.delete_tweet(id=tweet_id)
             return response.data.get("deleted", False)
         except Exception as e:
-            print(f"Failed to delete tweet: {e}")
+            logger.error("Failed to delete tweet: %s", e, exc_info=True)
             return False
 
     def get_rate_limits(self) -> dict:
@@ -293,7 +296,7 @@ class TwitterClient:
             }
 
         except Exception as e:
-            print(f"Failed to get rate limits: {e}")
+            logger.error("Failed to get rate limits: %s", e, exc_info=True)
             return {
                 "error": str(e),
                 "endpoints": {},

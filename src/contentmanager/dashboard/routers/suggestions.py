@@ -147,7 +147,7 @@ async def explain_section(
         )
 
     # Verify section exists
-    section = await const_repo.get_by_section_num(request.section_num)
+    section = await doc_repo.get_by_section_num(request.section_num)
     if not section:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

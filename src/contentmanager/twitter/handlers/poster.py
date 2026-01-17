@@ -1,7 +1,10 @@
 """Post approved content to Twitter."""
 
 import asyncio
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from contentmanager.config import get_settings
 from contentmanager.core.content.formats import Thread
@@ -51,7 +54,7 @@ class ContentPoster:
                             )
                             await content_repo.mark_posted(item.id)
                             posted += 1
-                            print(f"Auto-posted scheduled thread ({len(tweet_ids)} tweets): {item.topic}")
+                            logger.info("Auto-posted scheduled thread (%d tweets): %s", len(tweet_ids), item.topic)
                     else:
                         tweet_id = self.twitter.post_tweet(item.formatted_content)
 
@@ -63,10 +66,10 @@ class ContentPoster:
                             )
                             await content_repo.mark_posted(item.id)
                             posted += 1
-                            print(f"Auto-posted scheduled content: {item.topic}")
+                            logger.info("Auto-posted scheduled content: %s", item.topic)
 
                 except Exception as e:
-                    print(f"Failed to auto-post scheduled content {item.id}: {e}")
+                    logger.error("Failed to auto-post scheduled content %s: %s", item.id, e, exc_info=True)
 
             await session.commit()
 
@@ -104,7 +107,7 @@ class ContentPoster:
                             )
                             await content_repo.mark_posted(item.id)
                             posted += 1
-                            print(f"Posted thread ({len(tweet_ids)} tweets)")
+                            logger.info("Posted thread (%d tweets)", len(tweet_ids))
                     else:
                         # Post single tweet
                         tweet_id = self.twitter.post_tweet(item.formatted_content)
@@ -117,10 +120,10 @@ class ContentPoster:
                             )
                             await content_repo.mark_posted(item.id)
                             posted += 1
-                            print(f"Posted tweet: {tweet_id}")
+                            logger.info("Posted tweet: %s", tweet_id)
 
                 except Exception as e:
-                    print(f"Failed to post content {item.id}: {e}")
+                    logger.error("Failed to post content %s: %s", item.id, e, exc_info=True)
 
             await session.commit()
 
@@ -161,10 +164,10 @@ class ContentPoster:
                         )
                         await reply_repo.mark_posted(item.id)
                         posted += 1
-                        print(f"Posted reply to @{item.mention_author}")
+                        logger.info("Posted reply to @%s", item.mention_author)
 
                 except Exception as e:
-                    print(f"Failed to post reply {item.id}: {e}")
+                    logger.error("Failed to post reply %s: %s", item.id, e, exc_info=True)
 
             await session.commit()
 
@@ -193,20 +196,20 @@ class ContentPoster:
             interval: Seconds between posting checks
         """
         self._running = True
-        print(f"Starting content poster (interval: {interval}s)")
+        logger.info("Starting content poster (interval: %ds)", interval)
 
         while self._running:
             try:
                 result = await self.post_all()
                 total = result["scheduled_posted"] + result["content_posted"] + result["replies_posted"]
                 if total > 0:
-                    print(f"Posted: {result['scheduled_posted']} scheduled, {result['content_posted']} approved, {result['replies_posted']} replies")
+                    logger.info("Posted: %d scheduled, %d approved, %d replies", result['scheduled_posted'], result['content_posted'], result['replies_posted'])
             except Exception as e:
-                print(f"Error in posting loop: {e}")
+                logger.error("Error in posting loop: %s", e, exc_info=True)
 
             await asyncio.sleep(interval)
 
     def stop_posting(self) -> None:
         """Stop the posting loop."""
         self._running = False
-        print("Content poster stopped")
+        logger.info("Content poster stopped")

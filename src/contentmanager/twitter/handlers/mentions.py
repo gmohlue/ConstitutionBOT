@@ -1,7 +1,10 @@
 """Monitor Twitter mentions and create reply drafts."""
 
 import asyncio
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from contentmanager.config import get_settings
 from contentmanager.core.modes.user_provided import UserProvidedMode
@@ -58,10 +61,10 @@ class MentionMonitor:
                     )
 
                     processed += 1
-                    print(f"Queued reply for @{mention['author_username']}")
+                    logger.info("Queued reply for @%s", mention['author_username'])
 
                 except Exception as e:
-                    print(f"Failed to process mention {mention['id']}: {e}")
+                    logger.error("Failed to process mention %s: %s", mention['id'], e, exc_info=True)
 
             await session.commit()
 
@@ -74,19 +77,19 @@ class MentionMonitor:
     async def start_monitoring(self) -> None:
         """Start the mention monitoring loop."""
         self._running = True
-        print(f"Starting mention monitor (interval: {self.settings.mention_check_interval}s)")
+        logger.info("Starting mention monitor (interval: %ds)", self.settings.mention_check_interval)
 
         while self._running:
             try:
                 count = await self.check_mentions()
                 if count > 0:
-                    print(f"Processed {count} new mentions")
+                    logger.info("Processed %d new mentions", count)
             except Exception as e:
-                print(f"Error checking mentions: {e}")
+                logger.error("Error checking mentions: %s", e, exc_info=True)
 
             await asyncio.sleep(self.settings.mention_check_interval)
 
     def stop_monitoring(self) -> None:
         """Stop the mention monitoring loop."""
         self._running = False
-        print("Mention monitor stopped")
+        logger.info("Mention monitor stopped")
