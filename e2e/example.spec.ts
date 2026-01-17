@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import path from 'path';
 
 test('homepage redirects to login', async ({ page }) => {
   await page.goto('/');
@@ -11,4 +12,36 @@ test('login form is visible', async ({ page }) => {
   await expect(page.locator('input[name="username"]')).toBeVisible();
   await expect(page.locator('input[name="password"]')).toBeVisible();
   await expect(page.locator('button[type="submit"]')).toBeVisible();
+});
+
+test('can login with valid credentials', async ({ page }) => {
+  await page.goto('/login');
+  await page.fill('input[name="username"]', 'admin');
+  await page.fill('input[name="password"]', 'change_this_password');
+  await page.click('button[type="submit"]');
+
+  await expect(page).toHaveURL('/');
+  await expect(page).toHaveTitle(/Dashboard/);
+});
+
+test('can upload document', async ({ page }) => {
+  // Login first
+  await page.goto('/login');
+  await page.fill('input[name="username"]', 'admin');
+  await page.fill('input[name="password"]', 'change_this_password');
+  await page.click('button[type="submit"]');
+  await expect(page).toHaveURL('/');
+
+  // Navigate to documents page
+  await page.goto('/documents');
+  await expect(page.locator('h3:has-text("Upload Document")')).toBeVisible();
+
+  // Upload the SA Constitution PDF
+  const filePath = path.resolve(__dirname, '../data/constitution/uploads/SAConstitution-web-eng.pdf');
+  const fileInput = page.locator('input[type="file"]');
+  await fileInput.setInputFiles(filePath);
+
+  // Wait for upload to complete and verify success
+  await expect(page.locator('text=Document loaded')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('text=sections indexed')).toBeVisible();
 });
