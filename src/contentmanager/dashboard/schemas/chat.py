@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # Request schemas
@@ -99,6 +99,8 @@ class CitationResponse(BaseModel):
 class ChatMessageResponse(BaseModel):
     """Response representing a chat message."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     conversation_id: int
     role: str
@@ -108,12 +110,11 @@ class ChatMessageResponse(BaseModel):
     citations: Optional[list[CitationResponse]] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class ConversationResponse(BaseModel):
     """Response representing a conversation."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     session_id: str
@@ -126,9 +127,6 @@ class ConversationResponse(BaseModel):
     updated_at: datetime
     messages: list[ChatMessageResponse] = []
     message_count: int = 0
-
-    class Config:
-        from_attributes = True
 
 
 class ConversationListResponse(BaseModel):

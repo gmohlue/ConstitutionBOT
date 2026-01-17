@@ -3,11 +3,13 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ContentQueueResponse(BaseModel):
     """Content queue item response."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     content_type: str
@@ -24,9 +26,6 @@ class ContentQueueResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class ContentQueueListResponse(BaseModel):
     """List of content queue items."""
@@ -40,6 +39,8 @@ class ContentQueueListResponse(BaseModel):
 class CalendarItemResponse(BaseModel):
     """Calendar item response for scheduled content."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     content_type: str
     topic: Optional[str]
@@ -47,9 +48,6 @@ class CalendarItemResponse(BaseModel):
     scheduled_for: datetime
     auto_post: bool
     status: str
-
-    class Config:
-        from_attributes = True
 
 
 class CalendarListResponse(BaseModel):
@@ -62,6 +60,8 @@ class CalendarListResponse(BaseModel):
 class ReplyQueueResponse(BaseModel):
     """Reply queue item response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     mention_id: str
     mention_text: str
@@ -72,9 +72,6 @@ class ReplyQueueResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class ReplyQueueListResponse(BaseModel):
@@ -88,6 +85,8 @@ class ReplyQueueListResponse(BaseModel):
 class DocumentSectionResponse(BaseModel):
     """Document section response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     chapter_num: int
     chapter_title: str
@@ -96,9 +95,6 @@ class DocumentSectionResponse(BaseModel):
     content: str
     subsections: Optional[list[dict]]
     keywords: Optional[list[str]]
-
-    class Config:
-        from_attributes = True
 
 
 class DocumentUploadResponse(BaseModel):
@@ -151,6 +147,8 @@ class GeneratedContentResponse(BaseModel):
 class HistoryResponse(BaseModel):
     """Post history item response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     tweet_id: str
     content: str
@@ -159,9 +157,6 @@ class HistoryResponse(BaseModel):
     reply_to_id: Optional[str]
     engagement: Optional[dict]
     posted_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class HistoryListResponse(BaseModel):
@@ -214,15 +209,14 @@ class MessageResponse(BaseModel):
 class SimilarContentItem(BaseModel):
     """Similar content item for duplicate detection."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     topic: Optional[str]
     formatted_content: str
     similarity_score: float
     status: str
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class DuplicateCheckResponse(BaseModel):
@@ -263,6 +257,8 @@ class EngagementAnalyticsResponse(BaseModel):
 class TopPostResponse(BaseModel):
     """Top performing post response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     tweet_id: str
     content: str
@@ -272,9 +268,6 @@ class TopPostResponse(BaseModel):
     retweets: int = 0
     replies: int = 0
     impressions: int = 0
-
-    class Config:
-        from_attributes = True
 
 
 class AnalyticsDashboardResponse(BaseModel):

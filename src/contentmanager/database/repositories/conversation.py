@@ -50,6 +50,22 @@ class ConversationRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_all(
+        self,
+        status: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Conversation]:
+        """Get all conversations, optionally filtered by status."""
+        query = select(Conversation).order_by(Conversation.updated_at.desc())
+
+        if status:
+            query = query.where(Conversation.status == status)
+
+        query = query.limit(limit).offset(offset)
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
     async def get_by_session(
         self,
         session_id: str,

@@ -28,6 +28,7 @@ from contentmanager.dashboard.routers import (
     chat_router,
     documents_router,
     content_queue_router,
+    export_router,
     history_router,
     reply_queue_router,
     settings_router,
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(calendar_router)
     app.include_router(chat_router)
     app.include_router(content_queue_router)
+    app.include_router(export_router)
     app.include_router(reply_queue_router)
     app.include_router(documents_router)
     app.include_router(suggestions_router)
