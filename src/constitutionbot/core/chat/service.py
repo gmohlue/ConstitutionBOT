@@ -1,4 +1,4 @@
-"""Chat service for interactive conversations about the Constitution."""
+"""Chat service for interactive conversations about documents."""
 
 import json
 import re
@@ -8,9 +8,10 @@ from typing import Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from constitutionbot.core.claude_client import ClaudeClient, get_claude_client
-from constitutionbot.core.constitution.retriever import ConstitutionRetriever
+from constitutionbot.core.document.retriever import DocumentRetriever
+from constitutionbot.core.document.models import DocumentContext
 from constitutionbot.core.content.generator import ContentGenerator, GeneratedContent
-from constitutionbot.core.content.templates import PromptTemplates
+from constitutionbot.core.content.templates import PromptTemplates, DEFAULT_DOCUMENT_CONTEXT
 from constitutionbot.core.llm import LLMProvider, get_llm_provider
 from constitutionbot.database.models import (
     ConversationMessage,
@@ -62,12 +63,17 @@ class ChatService:
         session: AsyncSession,
         llm_provider: Optional[Union[LLMProvider, ClaudeClient]] = None,
         claude_client: Optional[ClaudeClient] = None,  # Deprecated, for backward compat
+        document_id: Optional[int] = None,
     ):
         self.session = session
         self._llm_provider = llm_provider or claude_client
         self._llm_initialized = False
-        self.retriever = ConstitutionRetriever(session)
-        self.generator = ContentGenerator(session, llm_provider=self._llm_provider)
+        self.document_id = document_id
+        self._doc_context: Optional[DocumentContext] = None
+        self.retriever = DocumentRetriever(session, document_id=document_id)
+        self.generator = ContentGenerator(
+            session, llm_provider=self._llm_provider, document_id=document_id
+        )
         self.conversation_repo = ConversationRepository(session)
         self.message_repo = MessageRepository(session)
 
@@ -88,6 +94,26 @@ class ChatService:
         if self._llm_provider is None:
             self._llm_provider = get_claude_client()
         return self._llm_provider
+
+    async def _get_doc_context(self) -> DocumentContext:
+        """Get document context, loading from database if needed."""
+        if self._doc_context:
+            return self._doc_context
+
+        doc = await self.retriever.get_document()
+        if doc:
+            section_label = await self.retriever.get_section_label()
+            self._doc_context = DocumentContext(
+                document_name=doc.name,
+                document_short_name=doc.short_name,
+                section_label=section_label,
+                description=doc.description,
+                default_hashtags=doc.default_hashtags or [],
+            )
+        else:
+            self._doc_context = DEFAULT_DOCUMENT_CONTEXT
+
+        return self._doc_context
 
     async def process_message(
         self,
@@ -212,7 +238,10 @@ class ChatService:
 
         # Use LLM for more complex intent detection
         try:
-            prompt = PromptTemplates.get_chat_intent_prompt(message, context)
+            doc_context = await self._get_doc_context()
+            prompt = PromptTemplates.get_chat_intent_prompt(
+                message, context, doc_context=doc_context
+            )
             llm = await self._get_llm()
             response = llm.generate(
                 prompt=prompt,
@@ -287,9 +316,12 @@ class ChatService:
             messages.append({"role": "user", "content": "Previous context:\n" + context})
             messages.append({"role": "assistant", "content": "I understand the context."})
 
+        doc_context = await self._get_doc_context()
+        section_label = doc_context.section_label.lower()
+
         full_question = question
         if const_context:
-            full_question = f"""Based on these relevant constitutional provisions:
+            full_question = f"""Based on these relevant provisions from the {doc_context.document_short_name}:
 
 {const_context}
 
@@ -297,14 +329,15 @@ class ChatService:
 
 Question: {question}
 
-Please answer this question about the South African Constitution. Cite specific sections where relevant."""
+Please answer this question about the {doc_context.document_short_name}. Cite specific {section_label}s where relevant."""
 
         messages.append({"role": "user", "content": full_question})
 
         llm = await self._get_llm()
+        system_prompt = PromptTemplates.get_chat_system_prompt(doc_context=doc_context)
         response = llm.generate_with_messages(
             messages=messages,
-            system_prompt=PromptTemplates.CHAT_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             temperature=0.7,
         )
 
@@ -324,11 +357,15 @@ Please answer this question about the South African Constitution. Cite specific 
         Returns:
             List of TopicSuggestion objects
         """
-        prompt = PromptTemplates.get_chat_topic_suggestions_prompt(context)
+        doc_context = await self._get_doc_context()
+        prompt = PromptTemplates.get_chat_topic_suggestions_prompt(
+            context, doc_context=doc_context
+        )
+        system_prompt = PromptTemplates.get_system_prompt(doc_context=doc_context)
         llm = await self._get_llm()
         response = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             temperature=0.8,
             max_tokens=800,
         )
@@ -418,17 +455,20 @@ Please answer this question about the South African Constitution. Cite specific 
         if sections:
             const_context = await self.retriever.format_multiple_sections(sections)
 
+        doc_context = await self._get_doc_context()
         prompt = PromptTemplates.get_chat_refinement_prompt(
             original_content=original_content,
             content_type=content_type,
             feedback=feedback,
             context=const_context,
+            doc_context=doc_context,
         )
 
+        system_prompt = PromptTemplates.get_system_prompt(doc_context=doc_context)
         llm = await self._get_llm()
         response = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             temperature=0.6,
         )
 
@@ -576,10 +616,13 @@ Please answer this question about the South African Constitution. Cite specific 
                 topic, limit=3
             )
 
+        doc_context = await self._get_doc_context()
+        section_label = doc_context.section_label.lower()
+
         if not constitution_sections:
             return ChatResponse(
-                content=f"I couldn't find specific sections related to '{topic}'. "
-                "Could you tell me more about what aspect of the Constitution you'd like to explore?",
+                content=f"I couldn't find specific {section_label}s related to '{topic}'. "
+                f"Could you tell me more about what aspect of the {doc_context.document_short_name} you'd like to explore?",
                 message_type=MessageType.TEXT.value,
             )
 
@@ -588,7 +631,7 @@ Please answer this question about the South African Constitution. Cite specific 
 
         prompt = f"""The user wants to explore the topic: "{topic}"
 
-Here are the relevant constitutional provisions:
+Here are the relevant provisions from the {doc_context.document_short_name}:
 
 {const_context}
 
@@ -598,10 +641,11 @@ Provide an engaging overview of this topic that:
 3. Suggests related topics they might want to explore
 4. Offers to generate content (tweet, thread, or script) about any aspect"""
 
+        system_prompt = PromptTemplates.get_chat_system_prompt(doc_context=doc_context)
         llm = await self._get_llm()
         response = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.CHAT_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             temperature=0.7,
         )
 
@@ -689,10 +733,12 @@ Provide an engaging overview of this topic that:
 
         messages.append({"role": "user", "content": message})
 
+        doc_context = await self._get_doc_context()
+        system_prompt = PromptTemplates.get_chat_system_prompt(doc_context=doc_context)
         llm = await self._get_llm()
         response = llm.generate_with_messages(
             messages=messages,
-            system_prompt=PromptTemplates.CHAT_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             temperature=0.7,
         )
 

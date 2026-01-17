@@ -99,6 +99,16 @@ class SALanguage(str, Enum):
         return names.get(code, code)
 
 
+class DocumentStructureType(str, Enum):
+    """Types of document structures for parsing."""
+
+    CHAPTER_SECTION = "chapter_section"  # e.g., Constitution (Chapter X, Section Y)
+    ARTICLE = "article"  # e.g., Legal documents (Article 1, 2, 3)
+    NUMBERED_LIST = "numbered_list"  # e.g., Policies (1., 2., 3.)
+    HEADING_BASED = "heading_based"  # Parse by headings
+    CUSTOM = "custom"  # Custom regex patterns
+
+
 class ContentQueue(Base):
     """Content queue - posts waiting for approval."""
 
@@ -171,12 +181,49 @@ class PostHistory(Base):
         return f"<PostHistory(id={self.id}, tweet_id={self.tweet_id})>"
 
 
-class ConstitutionSection(Base):
-    """Parsed Constitution sections."""
+class Document(Base):
+    """Document metadata - supports multiple source documents."""
 
-    __tablename__ = "constitution_sections"
+    __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    short_name: Mapped[str] = mapped_column(String(100), nullable=False)  # For prompts
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    structure_type: Mapped[str] = mapped_column(
+        String(50), default=DocumentStructureType.CHAPTER_SECTION.value
+    )
+    section_label: Mapped[str] = mapped_column(String(50), default="Section")  # "Section", "Article", etc.
+    section_count: Mapped[int] = mapped_column(Integer, default=0)
+    chapter_count: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # Document-specific configuration (topic vocabulary, keywords, etc.)
+    config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    # Custom prompt templates (if different from defaults)
+    custom_prompts: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    # Historical events specific to this document
+    historical_events: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    # Default hashtags for this document
+    default_hashtags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<Document(id={self.id}, name={self.short_name})>"
+
+
+class DocumentSection(Base):
+    """Parsed document sections - supports any document type."""
+
+    __tablename__ = "document_sections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    document_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     chapter_num: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     chapter_title: Mapped[str] = mapped_column(String(500), nullable=False)
     section_num: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
@@ -186,7 +233,11 @@ class ConstitutionSection(Base):
     keywords: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
 
     def __repr__(self) -> str:
-        return f"<ConstitutionSection(chapter={self.chapter_num}, section={self.section_num})>"
+        return f"<DocumentSection(doc={self.document_id}, chapter={self.chapter_num}, section={self.section_num})>"
+
+
+# Backward compatibility alias
+ConstitutionSection = DocumentSection
 
 
 class BotSettings(Base):

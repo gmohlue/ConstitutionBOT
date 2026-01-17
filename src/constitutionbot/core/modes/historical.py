@@ -7,11 +7,12 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from constitutionbot.core.content.generator import ContentGenerator, GeneratedContent
+from constitutionbot.database.repositories.document import DocumentRepository
 
 
 @dataclass
 class HistoricalEvent:
-    """A significant historical event related to South African democracy."""
+    """A significant historical event related to a document's history."""
 
     date: date
     name: str
@@ -19,84 +20,140 @@ class HistoricalEvent:
     related_sections: list[int]
     significance: str
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "HistoricalEvent":
+        """Create HistoricalEvent from dictionary."""
+        event_date = data.get("date")
+        if isinstance(event_date, str):
+            event_date = date.fromisoformat(event_date)
+        elif isinstance(event_date, dict):
+            event_date = date(event_date["year"], event_date["month"], event_date["day"])
+
+        return cls(
+            date=event_date,
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            related_sections=data.get("related_sections", []),
+            significance=data.get("significance", ""),
+        )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for storage."""
+        return {
+            "date": self.date.isoformat(),
+            "name": self.name,
+            "description": self.description,
+            "related_sections": self.related_sections,
+            "significance": self.significance,
+        }
+
+
+# Default events for SA Constitution (for backward compatibility)
+DEFAULT_SA_CONSTITUTION_EVENTS = [
+    {
+        "date": "1996-12-10",
+        "name": "Constitution Signed",
+        "description": "President Mandela signed the final Constitution into law",
+        "related_sections": [1, 2, 7],
+        "significance": "The foundation of our democratic order",
+    },
+    {
+        "date": "1994-04-27",
+        "name": "Freedom Day",
+        "description": "First democratic elections in South Africa",
+        "related_sections": [1, 19],
+        "significance": "Birth of our democracy and the right to vote",
+    },
+    {
+        "date": "1960-03-21",
+        "name": "Human Rights Day (Sharpeville)",
+        "description": "Sharpeville massacre - a turning point in the struggle",
+        "related_sections": [9, 10, 11, 12],
+        "significance": "Why we enshrine the rights to equality, dignity, life, and freedom",
+    },
+    {
+        "date": "1955-06-26",
+        "name": "Freedom Charter Adopted",
+        "description": "The Freedom Charter was adopted at Kliptown",
+        "related_sections": [1, 7, 9, 26, 29],
+        "significance": "Many Charter principles became constitutional rights",
+    },
+    {
+        "date": "1990-02-11",
+        "name": "Mandela Released",
+        "description": "Nelson Mandela released from Victor Verster Prison",
+        "related_sections": [12, 35],
+        "significance": "The beginning of the transition to democracy",
+    },
+    {
+        "date": "1976-06-16",
+        "name": "Youth Day (Soweto Uprising)",
+        "description": "Student uprising against Bantu education",
+        "related_sections": [29, 30, 31],
+        "significance": "The struggle for educational and language rights",
+    },
+    {
+        "date": "1996-05-08",
+        "name": "Constitution Adopted",
+        "description": "Constitutional Assembly adopted the final Constitution",
+        "related_sections": [1, 2, 3],
+        "significance": "The culmination of constitutional negotiations",
+    },
+    {
+        "date": "1997-02-04",
+        "name": "Constitution Comes into Force",
+        "description": "The Constitution of 1996 came into full effect",
+        "related_sections": [1, 2, 7, 8],
+        "significance": "The supreme law of our land took effect",
+    },
+]
+
 
 class HistoricalMode:
     """Mode 3: Historical event analysis and content generation.
 
     This mode creates content that connects historical events to
-    constitutional provisions, helping citizens understand the
-    Constitution in its historical context.
+    document provisions, helping users understand the document
+    in its historical context.
 
     Workflow:
     1. Select or specify a historical event/date
-    2. Identify relevant constitutional provisions
-    3. Generate content connecting history to Constitution
+    2. Identify relevant document provisions
+    3. Generate content connecting history to document
     4. Content goes to queue for admin review
     """
 
-    # Key dates in South African constitutional history
-    SIGNIFICANT_DATES = [
-        HistoricalEvent(
-            date=date(1996, 12, 10),
-            name="Constitution Signed",
-            description="President Mandela signed the final Constitution into law",
-            related_sections=[1, 2, 7],
-            significance="The foundation of our democratic order",
-        ),
-        HistoricalEvent(
-            date=date(1994, 4, 27),
-            name="Freedom Day",
-            description="First democratic elections in South Africa",
-            related_sections=[1, 19],
-            significance="Birth of our democracy and the right to vote",
-        ),
-        HistoricalEvent(
-            date=date(1960, 3, 21),
-            name="Human Rights Day (Sharpeville)",
-            description="Sharpeville massacre - a turning point in the struggle",
-            related_sections=[9, 10, 11, 12],
-            significance="Why we enshrine the rights to equality, dignity, life, and freedom",
-        ),
-        HistoricalEvent(
-            date=date(1955, 6, 26),
-            name="Freedom Charter Adopted",
-            description="The Freedom Charter was adopted at Kliptown",
-            related_sections=[1, 7, 9, 26, 29],
-            significance="Many Charter principles became constitutional rights",
-        ),
-        HistoricalEvent(
-            date=date(1990, 2, 11),
-            name="Mandela Released",
-            description="Nelson Mandela released from Victor Verster Prison",
-            related_sections=[12, 35],
-            significance="The beginning of the transition to democracy",
-        ),
-        HistoricalEvent(
-            date=date(1976, 6, 16),
-            name="Youth Day (Soweto Uprising)",
-            description="Student uprising against Bantu education",
-            related_sections=[29, 30, 31],
-            significance="The struggle for educational and language rights",
-        ),
-        HistoricalEvent(
-            date=date(1996, 5, 8),
-            name="Constitution Adopted",
-            description="Constitutional Assembly adopted the final Constitution",
-            related_sections=[1, 2, 3],
-            significance="The culmination of constitutional negotiations",
-        ),
-        HistoricalEvent(
-            date=date(1997, 2, 4),
-            name="Constitution Comes into Force",
-            description="The Constitution of 1996 came into full effect",
-            related_sections=[1, 2, 7, 8],
-            significance="The supreme law of our land took effect",
-        ),
-    ]
-
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, document_id: Optional[int] = None):
         self.session = session
-        self.generator = ContentGenerator(session)
+        self.document_id = document_id
+        self.generator = ContentGenerator(session, document_id=document_id)
+        self._events: Optional[list[HistoricalEvent]] = None
+        self._events_loaded = False
+
+    async def _get_events(self) -> list[HistoricalEvent]:
+        """Get historical events from document or defaults."""
+        if self._events_loaded:
+            return self._events or []
+
+        doc_repo = DocumentRepository(self.session)
+
+        if self.document_id:
+            doc = await doc_repo.get_by_id(self.document_id)
+        else:
+            doc = await doc_repo.get_active()
+
+        if doc and doc.historical_events:
+            self._events = [
+                HistoricalEvent.from_dict(e) for e in doc.historical_events
+            ]
+        else:
+            # Fall back to default SA Constitution events
+            self._events = [
+                HistoricalEvent.from_dict(e) for e in DEFAULT_SA_CONSTITUTION_EVENTS
+            ]
+
+        self._events_loaded = True
+        return self._events
 
     async def generate_for_date(
         self,
@@ -112,7 +169,7 @@ class HistoricalMode:
         Returns:
             GeneratedContent if date is significant, None otherwise
         """
-        event = self._find_event_for_date(target_date)
+        event = await self._find_event_for_date(target_date)
         if not event:
             return None
 
@@ -161,14 +218,15 @@ class HistoricalMode:
             content_type=content_type,
         )
 
-    def _find_event_for_date(self, target_date: date) -> Optional[HistoricalEvent]:
+    async def _find_event_for_date(self, target_date: date) -> Optional[HistoricalEvent]:
         """Find a significant event for a given date (ignoring year)."""
-        for event in self.SIGNIFICANT_DATES:
+        events = await self._get_events()
+        for event in events:
             if event.date.month == target_date.month and event.date.day == target_date.day:
                 return event
         return None
 
-    def get_upcoming_events(self, days: int = 30) -> list[HistoricalEvent]:
+    async def get_upcoming_events(self, days: int = 30) -> list[HistoricalEvent]:
         """Get significant events in the next N days.
 
         Args:
@@ -177,12 +235,11 @@ class HistoricalMode:
         Returns:
             List of upcoming HistoricalEvents
         """
-        from datetime import timedelta
-
         today = date.today()
         upcoming = []
+        events = await self._get_events()
 
-        for event in self.SIGNIFICANT_DATES:
+        for event in events:
             # Create this year's occurrence of the event
             this_year_date = event.date.replace(year=today.year)
 
@@ -204,7 +261,7 @@ class HistoricalMode:
 
         return upcoming
 
-    def get_event_by_name(self, name: str) -> Optional[HistoricalEvent]:
+    async def get_event_by_name(self, name: str) -> Optional[HistoricalEvent]:
         """Find an event by its name.
 
         Args:
@@ -213,8 +270,9 @@ class HistoricalMode:
         Returns:
             HistoricalEvent if found, None otherwise
         """
+        events = await self._get_events()
         name_lower = name.lower()
-        for event in self.SIGNIFICANT_DATES:
+        for event in events:
             if name_lower in event.name.lower():
                 return event
         return None
@@ -232,7 +290,7 @@ class HistoricalMode:
             GeneratedContent if today is significant, None otherwise
         """
         today = date.today()
-        event = self._find_event_for_date(today)
+        event = await self._find_event_for_date(today)
 
         if not event:
             return None
@@ -253,6 +311,7 @@ class HistoricalMode:
             content_type=content_type,
         )
 
-    def get_all_events(self) -> list[HistoricalEvent]:
+    async def get_all_events(self) -> list[HistoricalEvent]:
         """Get all significant dates."""
-        return self.SIGNIFICANT_DATES.copy()
+        events = await self._get_events()
+        return events.copy()

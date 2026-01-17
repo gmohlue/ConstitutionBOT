@@ -6,12 +6,12 @@ from typing import Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from constitutionbot.core.claude_client import ClaudeClient, get_claude_client
-from constitutionbot.core.constitution.retriever import ConstitutionRetriever
+from constitutionbot.core.document import DocumentContext, DocumentRetriever
 from constitutionbot.core.content.formats import ContentFormatter, Script, Thread, Tweet
-from constitutionbot.core.content.templates import PromptTemplates
+from constitutionbot.core.content.templates import DEFAULT_DOCUMENT_CONTEXT, PromptTemplates
 from constitutionbot.core.content.validators import ContentValidator, ValidationResult
 from constitutionbot.core.llm import LLMProvider, get_llm_provider
-from constitutionbot.database.models import ConstitutionSection
+from constitutionbot.database.models import DocumentSection
 
 
 @dataclass
@@ -38,21 +38,23 @@ class TopicSuggestion:
 
 
 class ContentGenerator:
-    """Generate educational content about the SA Constitution."""
+    """Generate educational content from any document."""
 
     def __init__(
         self,
         session: AsyncSession,
         llm_provider: Optional[Union[LLMProvider, ClaudeClient]] = None,
         claude_client: Optional[ClaudeClient] = None,  # Deprecated, for backward compat
+        document_id: Optional[int] = None,
     ):
         self.session = session
-        self.retriever = ConstitutionRetriever(session)
+        self.retriever = DocumentRetriever(session, document_id)
         # Support both new llm_provider and deprecated claude_client parameter
         self._llm_provider = llm_provider or claude_client
         self._llm_initialized = False
         self.formatter = ContentFormatter()
         self.validator = ContentValidator()
+        self._doc_context: Optional[DocumentContext] = None
 
     async def _get_llm(self) -> Union[LLMProvider, ClaudeClient]:
         """Get the LLM provider, initializing if needed."""
@@ -62,6 +64,26 @@ class ContentGenerator:
             self._llm_provider = await get_llm_provider(self.session)
             self._llm_initialized = True
         return self._llm_provider
+
+    async def _get_doc_context(self) -> DocumentContext:
+        """Get the document context, fetching from DB if needed."""
+        if self._doc_context:
+            return self._doc_context
+
+        doc = await self.retriever.get_document()
+        if doc:
+            section_label = await self.retriever.get_section_label()
+            self._doc_context = DocumentContext(
+                document_name=doc.name,
+                document_short_name=doc.short_name,
+                section_label=section_label,
+                description=doc.description,
+                default_hashtags=doc.default_hashtags or [],
+            )
+        else:
+            self._doc_context = DEFAULT_DOCUMENT_CONTEXT
+
+        return self._doc_context
 
     @property
     def claude(self) -> Union[LLMProvider, ClaudeClient]:
@@ -73,6 +95,9 @@ class ContentGenerator:
 
     async def suggest_topic(self) -> TopicSuggestion:
         """Generate a topic suggestion (Mode 1: Bot Proposed)."""
+        # Get document context
+        doc_context = await self._get_doc_context()
+
         # Get some random sections for inspiration
         sections = []
         for _ in range(3):
@@ -84,23 +109,30 @@ class ContentGenerator:
         if sections:
             context = await self.retriever.format_multiple_sections(sections)
 
-        prompt = PromptTemplates.TOPIC_SUGGESTION_PROMPT
+        prompt = PromptTemplates.get_topic_suggestion_prompt(doc_context=doc_context)
         if context:
-            prompt = f"Here are some constitutional sections for inspiration:\n\n{context}\n\n{prompt}"
+            prompt = f"Here are some {doc_context.section_label.lower()}s for inspiration:\n\n{context}\n\n{prompt}"
 
         llm = await self._get_llm()
         response = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
             temperature=0.8,
         )
 
         # Parse the response
-        return self._parse_topic_suggestion(response)
+        return self._parse_topic_suggestion(response, doc_context)
 
-    def _parse_topic_suggestion(self, response: str) -> TopicSuggestion:
+    def _parse_topic_suggestion(
+        self,
+        response: str,
+        doc_context: Optional[DocumentContext] = None,
+    ) -> TopicSuggestion:
         """Parse topic suggestion from Claude's response."""
         import re
+
+        ctx = doc_context or DEFAULT_DOCUMENT_CONTEXT
+        section_label = ctx.section_label.upper()
 
         topic = ""
         section_nums = []
@@ -111,7 +143,10 @@ class ContentGenerator:
             line = line.strip()
             if line.startswith("TOPIC:"):
                 topic = line.replace("TOPIC:", "").strip()
-            elif line.startswith("SECTION:"):
+            elif line.startswith(f"{section_label}:"):
+                section_str = line.replace(f"{section_label}:", "").strip()
+                section_nums = [int(n) for n in re.findall(r"\d+", section_str)]
+            elif line.startswith("SECTION:"):  # Backward compat
                 section_str = line.replace("SECTION:", "").strip()
                 section_nums = [int(n) for n in re.findall(r"\d+", section_str)]
             elif line.startswith("ANGLE:"):
@@ -120,10 +155,10 @@ class ContentGenerator:
                 reason = line.replace("WHY:", "").strip()
 
         return TopicSuggestion(
-            topic=topic or "Constitutional rights and civic education",
-            section_nums=section_nums or [9],  # Default to equality section
+            topic=topic or f"{ctx.document_short_name} education",
+            section_nums=section_nums or [1],  # Default to first section
             angle=angle or "Educational overview",
-            reason=reason or "Relevant to South African citizens",
+            reason=reason or "Relevant to the audience",
         )
 
     async def generate_tweet(
@@ -133,6 +168,9 @@ class ContentGenerator:
         section_nums: Optional[list[int]] = None,
     ) -> GeneratedContent:
         """Generate a single educational tweet."""
+        # Get document context
+        doc_context = await self._get_doc_context()
+
         # Get relevant sections
         if section_nums:
             sections = []
@@ -147,18 +185,22 @@ class ContentGenerator:
         context = await self.retriever.format_multiple_sections(sections) if sections else ""
 
         # Generate content
-        prompt = PromptTemplates.get_tweet_prompt(topic=topic, context=context)
+        prompt = PromptTemplates.get_tweet_prompt(
+            topic=topic,
+            context=context,
+            doc_context=doc_context,
+        )
         llm = await self._get_llm()
         raw_content = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
             temperature=0.7,
         )
 
         # Parse and format
         tweet = self.formatter.parse_tweet(raw_content)
         formatted = self.formatter.format_tweet_for_posting(tweet)
-        formatted = self.formatter.add_hashtags(formatted)
+        formatted = self.formatter.add_hashtags(formatted, doc_context.default_hashtags)
 
         # Validate
         validation = self.validator.validate_tweet(formatted)
@@ -184,6 +226,9 @@ class ContentGenerator:
         section_nums: Optional[list[int]] = None,
     ) -> GeneratedContent:
         """Generate a Twitter thread."""
+        # Get document context
+        doc_context = await self._get_doc_context()
+
         # Get relevant sections
         if section_nums:
             sections = []
@@ -202,11 +247,12 @@ class ContentGenerator:
             topic=topic,
             context=context,
             num_tweets=num_tweets,
+            doc_context=doc_context,
         )
         llm = await self._get_llm()
         raw_content = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
             temperature=0.7,
             max_tokens=2000,
         )
@@ -240,6 +286,9 @@ class ContentGenerator:
         duration: str = "2-3 minutes",
     ) -> GeneratedContent:
         """Generate a dialog script for educational content."""
+        # Get document context
+        doc_context = await self._get_doc_context()
+
         # Get relevant sections
         if section_nums:
             sections = []
@@ -258,11 +307,12 @@ class ContentGenerator:
             topic=topic,
             context=context,
             duration=duration,
+            doc_context=doc_context,
         )
         llm = await self._get_llm()
         raw_content = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
             temperature=0.7,
             max_tokens=3000,
         )
@@ -290,6 +340,9 @@ class ContentGenerator:
         mention_author: str,
     ) -> GeneratedContent:
         """Generate a reply to a mention."""
+        # Get document context
+        doc_context = await self._get_doc_context()
+
         # Find relevant sections based on mention content
         sections = await self.retriever.get_sections_for_topic(mention_text, limit=3)
 
@@ -301,11 +354,12 @@ class ContentGenerator:
             username=mention_author,
             mention_text=mention_text,
             context=context,
+            doc_context=doc_context,
         )
         llm = await self._get_llm()
         raw_content = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
             temperature=0.6,
         )
 
@@ -335,6 +389,9 @@ class ContentGenerator:
         content_type: str = "tweet",
     ) -> GeneratedContent:
         """Generate content about a historical event (Mode 3)."""
+        # Get document context
+        doc_context = await self._get_doc_context()
+
         # Search for relevant sections
         sections = await self.retriever.get_sections_for_topic(event, limit=5)
 
@@ -353,11 +410,12 @@ class ContentGenerator:
             context=context,
             format_type=content_type,
             format_requirements=format_requirements,
+            doc_context=doc_context,
         )
         llm = await self._get_llm()
         raw_content = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
             temperature=0.7,
         )
 
@@ -370,7 +428,7 @@ class ContentGenerator:
         else:
             tweet = self.formatter.parse_tweet(raw_content)
             formatted = self.formatter.format_tweet_for_posting(tweet)
-            formatted = self.formatter.add_hashtags(formatted)
+            formatted = self.formatter.add_hashtags(formatted, doc_context.default_hashtags)
             validation = self.validator.validate_tweet(formatted)
 
         # Build citations
@@ -392,9 +450,13 @@ class ContentGenerator:
         content_type: str = "tweet",
     ) -> GeneratedContent:
         """Generate an explanation of a specific section."""
+        # Get document context
+        doc_context = await self._get_doc_context()
+        section_label = doc_context.section_label
+
         section = await self.retriever.get_section(section_num)
         if not section:
-            raise ValueError(f"Section {section_num} not found")
+            raise ValueError(f"{section_label} {section_num} not found")
 
         section_text = await self.retriever.format_section_for_prompt(section)
 
@@ -409,16 +471,17 @@ class ContentGenerator:
             section_text=section_text,
             format_type=content_type,
             max_length=max_length,
+            doc_context=doc_context,
         )
         llm = await self._get_llm()
         raw_content = llm.generate(
             prompt=prompt,
-            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            system_prompt=PromptTemplates.get_system_prompt(doc_context=doc_context),
             temperature=0.7,
         )
 
         # Parse based on type
-        topic = f"Section {section_num}: {section.section_title or 'Explanation'}"
+        topic = f"{section_label} {section_num}: {section.section_title or 'Explanation'}"
 
         if content_type == "thread":
             thread = self.formatter.parse_thread(raw_content, topic=topic)
@@ -428,7 +491,7 @@ class ContentGenerator:
         else:
             tweet = self.formatter.parse_tweet(raw_content)
             formatted = self.formatter.format_tweet_for_posting(tweet)
-            formatted = self.formatter.add_hashtags(formatted)
+            formatted = self.formatter.add_hashtags(formatted, doc_context.default_hashtags)
             validation = self.validator.validate_tweet(formatted)
 
         # Build citations
@@ -444,7 +507,7 @@ class ContentGenerator:
             mode="user_provided",
         )
 
-    def _build_citations(self, sections: list[ConstitutionSection]) -> list[dict]:
+    def _build_citations(self, sections: list[DocumentSection]) -> list[dict]:
         """Build citation references from sections."""
         citations = []
         for section in sections:

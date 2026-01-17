@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Tuple
 
 from constitutionbot.config import get_settings
 
@@ -33,11 +33,18 @@ class ValidationResult:
 class ContentValidator:
     """Validate generated content before queuing/posting."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        section_label: str = "Section",
+        section_range: Optional[Tuple[int, int]] = None,
+        default_hashtags: Optional[list[str]] = None,
+    ):
         self.settings = get_settings()
 
-        # Known valid section numbers in SA Constitution (1-243)
-        self.valid_section_range = (1, 243)
+        # Configurable document metadata
+        self.section_label = section_label
+        self.valid_section_range = section_range or (1, 1000)  # Default wide range
+        self.default_hashtags = default_hashtags or ["KnowYourRights"]
 
         # Sensitive keywords that may require extra review
         self.sensitive_keywords = [
@@ -70,8 +77,8 @@ class ContentValidator:
 
         # Check for citation
         if not self._has_citation(content):
-            result.add_warning("Tweet does not contain a section citation")
-            result.add_suggestion("Consider adding a reference like 'Section X'")
+            result.add_warning(f"Tweet does not contain a {self.section_label.lower()} citation")
+            result.add_suggestion(f"Consider adding a reference like '{self.section_label} X'")
 
         # Check for valid citations
         citations = self._extract_citations(content)
@@ -125,7 +132,7 @@ class ContentValidator:
 
         # Thread should have at least one citation
         if not has_citation:
-            result.add_warning("Thread contains no constitutional citations")
+            result.add_warning(f"Thread contains no {self.section_label.lower()} citations")
 
         # Check for logical flow (basic check)
         if tweets and not any(
@@ -160,11 +167,13 @@ class ContentValidator:
 
     def _has_citation(self, content: str) -> bool:
         """Check if content contains a section citation."""
-        return bool(re.search(r"Section\s+\d+", content, re.IGNORECASE))
+        pattern = rf"{re.escape(self.section_label)}\s+\d+"
+        return bool(re.search(pattern, content, re.IGNORECASE))
 
     def _extract_citations(self, content: str) -> list[int]:
         """Extract section numbers from content."""
-        matches = re.findall(r"Section\s+(\d+)", content, re.IGNORECASE)
+        pattern = rf"{re.escape(self.section_label)}\s+(\d+)"
+        matches = re.findall(pattern, content, re.IGNORECASE)
         return [int(m) for m in matches]
 
     def _is_valid_section_number(self, section_num: int) -> bool:
@@ -207,7 +216,8 @@ class ContentValidator:
         # Hashtag suggestions
         hashtags = re.findall(r"#\w+", content)
         if not hashtags:
-            suggestions.append("Add hashtags like #SAConstitution or #KnowYourRights")
+            suggested_tags = " or ".join(f"#{tag}" for tag in self.default_hashtags[:2])
+            suggestions.append(f"Add hashtags like {suggested_tags}")
 
         # Call to action
         cta_phrases = ["learn more", "what do you think", "share", "let us know"]

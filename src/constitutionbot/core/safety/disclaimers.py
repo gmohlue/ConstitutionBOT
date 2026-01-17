@@ -14,63 +14,91 @@ class DisclaimerType(str, Enum):
     EDUCATIONAL = "educational"
 
 
+# Default disclaimers
+DEFAULT_DISCLAIMERS = {
+    DisclaimerType.GENERAL: (
+        "📚 This is educational content, not legal or professional advice."
+    ),
+    DisclaimerType.LEGAL: (
+        "⚖️ This is general information only. For specific legal advice, "
+        "please consult a qualified legal professional."
+    ),
+    DisclaimerType.SENSITIVE: (
+        "⚠️ This content discusses sensitive topics. "
+        "Please engage respectfully and seek professional guidance if needed."
+    ),
+    DisclaimerType.HISTORICAL: (
+        "📜 This content discusses historical events for educational purposes."
+    ),
+    DisclaimerType.EDUCATIONAL: (
+        "🎓 Educational content for awareness. "
+        "For detailed interpretation, consult professional resources."
+    ),
+}
+
+DEFAULT_SHORT_DISCLAIMERS = {
+    DisclaimerType.GENERAL: "📚 Educational only, not legal advice.",
+    DisclaimerType.LEGAL: "⚖️ General info only. Consult a lawyer for advice.",
+    DisclaimerType.SENSITIVE: "⚠️ Sensitive topic. Seek guidance if needed.",
+    DisclaimerType.HISTORICAL: "📜 Historical context for educational purposes.",
+    DisclaimerType.EDUCATIONAL: "🎓 For awareness. Consult professional resources.",
+}
+
+# Default topic keywords that trigger disclaimers
+DEFAULT_TOPIC_DISCLAIMERS = {
+    # Legal topics
+    "rights violation": DisclaimerType.LEGAL,
+    "sue": DisclaimerType.LEGAL,
+    "court": DisclaimerType.LEGAL,
+    "arrested": DisclaimerType.LEGAL,
+    "detained": DisclaimerType.LEGAL,
+    "lawyer": DisclaimerType.LEGAL,
+    # Sensitive topics
+    "death penalty": DisclaimerType.SENSITIVE,
+    "abortion": DisclaimerType.SENSITIVE,
+    "hate speech": DisclaimerType.SENSITIVE,
+    "discrimination": DisclaimerType.SENSITIVE,
+    "violence": DisclaimerType.SENSITIVE,
+}
+
+
 class DisclaimerManager:
     """Manage disclaimers for different content types."""
 
-    # Standard disclaimers
-    DISCLAIMERS = {
-        DisclaimerType.GENERAL: (
-            "📚 This is educational content about the SA Constitution, not legal advice."
-        ),
-        DisclaimerType.LEGAL: (
-            "⚖️ This is general information only. For specific legal advice, "
-            "please consult a qualified legal professional."
-        ),
-        DisclaimerType.SENSITIVE: (
-            "⚠️ This content discusses sensitive topics. "
-            "Please engage respectfully and seek professional guidance if needed."
-        ),
-        DisclaimerType.HISTORICAL: (
-            "📜 This content discusses historical events. "
-            "The Constitution has evolved to address past injustices."
-        ),
-        DisclaimerType.EDUCATIONAL: (
-            "🎓 Educational content for civic awareness. "
-            "For detailed legal interpretation, consult legal resources."
-        ),
-    }
+    def __init__(
+        self,
+        custom_disclaimers: Optional[dict] = None,
+        custom_short_disclaimers: Optional[dict] = None,
+        custom_topic_disclaimers: Optional[dict] = None,
+    ):
+        """Initialize disclaimer manager with optional custom disclaimers.
 
-    # Short disclaimers for space-constrained contexts (tweets)
-    SHORT_DISCLAIMERS = {
-        DisclaimerType.GENERAL: "📚 Educational only, not legal advice.",
-        DisclaimerType.LEGAL: "⚖️ General info only. Consult a lawyer for advice.",
-        DisclaimerType.SENSITIVE: "⚠️ Sensitive topic. Seek guidance if needed.",
-        DisclaimerType.HISTORICAL: "📜 Historical context. Constitution has evolved.",
-        DisclaimerType.EDUCATIONAL: "🎓 For awareness. Consult legal resources.",
-    }
+        Args:
+            custom_disclaimers: Custom full-length disclaimers by type
+            custom_short_disclaimers: Custom short disclaimers by type
+            custom_topic_disclaimers: Custom topic-to-disclaimer-type mappings
+        """
+        # Merge custom disclaimers with defaults
+        self.disclaimers = {**DEFAULT_DISCLAIMERS}
+        if custom_disclaimers:
+            for key, value in custom_disclaimers.items():
+                if isinstance(key, str):
+                    key = DisclaimerType(key)
+                self.disclaimers[key] = value
 
-    # Topics that trigger specific disclaimers
-    TOPIC_DISCLAIMERS = {
-        # Legal topics
-        "rights violation": DisclaimerType.LEGAL,
-        "sue": DisclaimerType.LEGAL,
-        "court": DisclaimerType.LEGAL,
-        "arrested": DisclaimerType.LEGAL,
-        "detained": DisclaimerType.LEGAL,
-        "lawyer": DisclaimerType.LEGAL,
-        # Sensitive topics
-        "death penalty": DisclaimerType.SENSITIVE,
-        "abortion": DisclaimerType.SENSITIVE,
-        "hate speech": DisclaimerType.SENSITIVE,
-        "discrimination": DisclaimerType.SENSITIVE,
-        "violence": DisclaimerType.SENSITIVE,
-        # Historical topics
-        "apartheid": DisclaimerType.HISTORICAL,
-        "1994": DisclaimerType.HISTORICAL,
-        "freedom day": DisclaimerType.HISTORICAL,
-        "mandela": DisclaimerType.HISTORICAL,
-        "reconciliation": DisclaimerType.HISTORICAL,
-    }
+        self.short_disclaimers = {**DEFAULT_SHORT_DISCLAIMERS}
+        if custom_short_disclaimers:
+            for key, value in custom_short_disclaimers.items():
+                if isinstance(key, str):
+                    key = DisclaimerType(key)
+                self.short_disclaimers[key] = value
+
+        self.topic_disclaimers = {**DEFAULT_TOPIC_DISCLAIMERS}
+        if custom_topic_disclaimers:
+            for key, value in custom_topic_disclaimers.items():
+                if isinstance(value, str):
+                    value = DisclaimerType(value)
+                self.topic_disclaimers[key] = value
 
     def get_disclaimer(
         self,
@@ -79,20 +107,20 @@ class DisclaimerManager:
     ) -> str:
         """Get a disclaimer by type."""
         if short:
-            return self.SHORT_DISCLAIMERS.get(
+            return self.short_disclaimers.get(
                 disclaimer_type,
-                self.SHORT_DISCLAIMERS[DisclaimerType.GENERAL],
+                self.short_disclaimers[DisclaimerType.GENERAL],
             )
-        return self.DISCLAIMERS.get(
+        return self.disclaimers.get(
             disclaimer_type,
-            self.DISCLAIMERS[DisclaimerType.GENERAL],
+            self.disclaimers[DisclaimerType.GENERAL],
         )
 
     def detect_needed_disclaimer(self, content: str) -> Optional[DisclaimerType]:
         """Detect what type of disclaimer is needed based on content."""
         content_lower = content.lower()
 
-        for keyword, disclaimer_type in self.TOPIC_DISCLAIMERS.items():
+        for keyword, disclaimer_type in self.topic_disclaimers.items():
             if keyword in content_lower:
                 return disclaimer_type
 
