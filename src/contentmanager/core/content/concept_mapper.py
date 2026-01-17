@@ -75,6 +75,79 @@ TOPIC_CONCEPT_MAP: dict[str, ConceptMapping] = {
             "Access to services for non-citizens", "Community tensions"
         ]
     ),
+    "illegal foreigners": ConceptMapping(
+        topic="illegal foreigners",
+        principles=[
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.EQUALITY,
+            ConstitutionalPrinciple.SECURITY_OF_PERSON,
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+        ],
+        section_references=[9, 10, 12, 33],
+        key_concepts=[
+            "human dignity regardless of status", "equal protection under law",
+            "constitutional rights vs citizenship rights", "due process",
+            "administrative justice in immigration matters"
+        ],
+        perspective_angles=[
+            "The Constitution protects human dignity for ALL people, not just citizens",
+            "Section 9 equality rights apply to everyone in South Africa",
+            "Even undocumented persons have constitutional protections",
+            "The difference between human rights and citizenship privileges"
+        ],
+        real_world_connections=[
+            "Deportation procedures", "Access to emergency healthcare",
+            "Treatment in detention", "Children's rights regardless of parents' status"
+        ]
+    ),
+    "foreigners": ConceptMapping(
+        topic="foreigners",
+        principles=[
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.EQUALITY,
+            ConstitutionalPrinciple.SECURITY_OF_PERSON,
+            ConstitutionalPrinciple.FREEDOM_MOVEMENT,
+        ],
+        section_references=[9, 10, 12, 21],
+        key_concepts=[
+            "non-discrimination", "human dignity", "equal protection",
+            "freedom from violence", "universal human rights"
+        ],
+        perspective_angles=[
+            "Constitutional rights that apply to everyone, not just citizens",
+            "The Bill of Rights protects 'everyone' - a deliberate word choice",
+            "Human dignity as the foundation of all other rights",
+            "Integration vs exclusion in a constitutional democracy"
+        ],
+        real_world_connections=[
+            "Foreign nationals living in SA", "Refugee rights",
+            "Access to services", "Community integration"
+        ]
+    ),
+    "migrants": ConceptMapping(
+        topic="migrants",
+        principles=[
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.EQUALITY,
+            ConstitutionalPrinciple.FREEDOM_MOVEMENT,
+            ConstitutionalPrinciple.CHILDREN_RIGHTS,
+        ],
+        section_references=[9, 10, 21, 28],
+        key_concepts=[
+            "freedom of movement", "human dignity", "children's best interests",
+            "non-discrimination", "access to basic services"
+        ],
+        perspective_angles=[
+            "Section 21 on freedom of movement and residence",
+            "Children's constitutional rights regardless of parents' migration status",
+            "Human dignity as non-negotiable regardless of documentation",
+            "The constitutional vision of an inclusive society"
+        ],
+        real_world_connections=[
+            "Migrant workers' rights", "Refugee children in schools",
+            "Healthcare access", "Labor protections"
+        ]
+    ),
     "racism": ConceptMapping(
         topic="racism",
         principles=[
@@ -407,8 +480,18 @@ TOPIC_CONCEPT_MAP: dict[str, ConceptMapping] = {
 # Keywords that can trigger concept matching
 KEYWORD_CONCEPT_MAP: dict[str, list[str]] = {
     "foreigner": ["xenophobia"],
+    "foreigners": ["xenophobia"],
+    "illegal": ["xenophobia"],
+    "undocumented": ["xenophobia"],
+    "migrant": ["xenophobia"],
+    "migrants": ["xenophobia"],
     "immigrant": ["xenophobia"],
+    "immigrants": ["xenophobia"],
+    "refugee": ["xenophobia"],
+    "refugees": ["xenophobia"],
+    "asylum": ["xenophobia"],
     "non-citizen": ["xenophobia"],
+    "non-citizens": ["xenophobia"],
     "african": ["xenophobia", "racism"],
     "discrimination": ["racism", "gender equality", "equality"],
     "race": ["racism"],
