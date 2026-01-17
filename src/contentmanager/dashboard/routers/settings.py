@@ -205,6 +205,7 @@ class CredentialStatusResponse(BaseModel):
 class CredentialsStatusResponse(BaseModel):
     """Response for all credentials status."""
 
+    anthropic_api_key: CredentialStatusResponse
     twitter_api_key: CredentialStatusResponse
     twitter_api_secret: CredentialStatusResponse
     twitter_access_token: CredentialStatusResponse
@@ -223,6 +224,7 @@ class SetCredentialRequest(BaseModel):
 class SetCredentialsRequest(BaseModel):
     """Request to set multiple credentials at once."""
 
+    anthropic_api_key: Optional[str] = None
     twitter_api_key: Optional[str] = None
     twitter_api_secret: Optional[str] = None
     twitter_access_token: Optional[str] = None
@@ -241,6 +243,7 @@ async def get_credentials_status(
     status = await repo.get_credentials_status()
 
     return CredentialsStatusResponse(
+        anthropic_api_key=CredentialStatusResponse(**status[repo.ANTHROPIC_API_KEY]),
         twitter_api_key=CredentialStatusResponse(**status[repo.TWITTER_API_KEY]),
         twitter_api_secret=CredentialStatusResponse(**status[repo.TWITTER_API_SECRET]),
         twitter_access_token=CredentialStatusResponse(**status[repo.TWITTER_ACCESS_TOKEN]),
@@ -265,6 +268,7 @@ async def set_credentials(
 
     # Map request fields to credential keys
     credential_map = {
+        "anthropic_api_key": repo.ANTHROPIC_API_KEY,
         "twitter_api_key": repo.TWITTER_API_KEY,
         "twitter_api_secret": repo.TWITTER_API_SECRET,
         "twitter_access_token": repo.TWITTER_ACCESS_TOKEN,
