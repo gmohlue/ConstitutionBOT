@@ -29,6 +29,6 @@ def test_settings_paths_created(tmp_path):
         data_dir=tmp_path / "data",
     )
 
-    assert settings.constitution_uploads_dir.exists()
-    assert settings.constitution_processed_dir.exists()
+    assert settings.document_uploads_dir.exists()
+    assert settings.document_processed_dir.exists()
     assert settings.database_dir.exists()
