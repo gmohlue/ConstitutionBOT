@@ -100,7 +100,7 @@ async def get_stats(
         tweets_posted=history_stats["tweets"],
         threads_posted=history_stats["threads"],
         replies_posted=history_stats["replies"],
-        constitution_loaded=constitution_loaded,
+        document_loaded=constitution_loaded,
         total_sections=total_sections,
         bot_enabled=settings.bot_enabled,
         auto_generate_enabled=settings.auto_generate_enabled,
