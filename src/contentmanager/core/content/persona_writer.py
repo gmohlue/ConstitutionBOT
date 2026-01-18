@@ -153,6 +153,27 @@ PERSONAS = {
         uses_em_dashes=False,
         uses_parentheticals=False,
     ),
+    "south_african": WritingPersona(
+        name="South African Citizen",
+        tone=ToneType.CONVERSATIONAL,
+        formality_level=0.2,
+        uses_contractions=True,
+        rhetorical_style=RhetoricalStyle.PROVOCATIVE,
+        personality_words=["look", "shame", "ja", "eish", "yoh", "hectic", "sharp", "sorted", "neh"],
+        avoided_words=[
+            "furthermore", "moreover", "thus", "hence", "stakeholders", "synergy",
+            "empowerment", "going forward", "capacity building", "service delivery",
+            "developmental", "holistic", "integrated", "socio-economic",
+            "it is crucial to note", "this highlights", "underscores",
+            "in conclusion", "serves as a reminder", "post-apartheid",
+            "constitutional dispensation", "rainbow nation", "born-free generation",
+        ],
+        prefers_short_sentences=True,
+        uses_rhetorical_questions=True,
+        uses_em_dashes=True,
+        uses_parentheticals=True,
+        sentence_start_variety=True,
+    ),
 }
 
 

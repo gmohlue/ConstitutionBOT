@@ -547,6 +547,276 @@ TOPIC_CONCEPT_MAP: dict[str, ConceptMapping] = {
             "Worker strikes", "Political demonstrations"
         ]
     ),
+    # ========================================================================
+    # SA TREND TOPICS - Real discourse from South African social/political life
+    # ========================================================================
+    "sassa_grants": ConceptMapping(
+        topic="SASSA grants",
+        principles=[
+            ConstitutionalPrinciple.SOCIAL_SECURITY,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+            ConstitutionalPrinciple.CHILDREN_RIGHTS,
+        ],
+        section_references=[27, 10, 33, 28],
+        key_concepts=[
+            "right to social security", "social assistance",
+            "administrative justice in grant applications",
+            "dignity in accessing state support", "child support"
+        ],
+        perspective_angles=[
+            "Section 27 guarantees the right to social security",
+            "The SASSA queue as a test of constitutional promises",
+            "Administrative justice when your grant is suspended",
+            "What dignity looks like when you need government help"
+        ],
+        real_world_connections=[
+            "Grant payment day queues", "SASSA card problems",
+            "R350 SRD grant applications", "Child support grants",
+            "Grant suspension without notice", "Lapsed grants",
+            "Disability grant assessments", "Foster care grants"
+        ]
+    ),
+    "nsfas": ConceptMapping(
+        topic="NSFAS",
+        principles=[
+            ConstitutionalPrinciple.EDUCATION,
+            ConstitutionalPrinciple.EQUALITY,
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+        ],
+        section_references=[29, 9, 33, 10],
+        key_concepts=[
+            "right to further education", "progressive access",
+            "equal educational opportunity", "administrative fairness",
+            "student funding as constitutional right"
+        ],
+        perspective_angles=[
+            "Section 29 and the state's duty to make education accessible",
+            "When your NSFAS status says 'provisionally funded' for months",
+            "Equality in education - does money determine who studies?",
+            "The gap between constitutional promises and registration day reality"
+        ],
+        real_world_connections=[
+            "NSFAS portal crashes", "Allowance payment delays",
+            "Registration blocked for funding status", "Missing meal allowances",
+            "Accommodation funding gaps", "Historic debt and registration",
+            "Appeals process failures", "First-generation students"
+        ]
+    ),
+    "municipality_failures": ConceptMapping(
+        topic="municipality failures",
+        principles=[
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+            ConstitutionalPrinciple.FOOD_WATER,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.HOUSING,
+        ],
+        section_references=[33, 27, 10, 26, 152, 153],
+        key_concepts=[
+            "local government obligations", "service delivery",
+            "reasonable administrative action", "basic services as rights",
+            "municipal accountability", "cooperative governance"
+        ],
+        perspective_angles=[
+            "Section 152 mandates municipalities to provide services",
+            "What happens when your water bill is wrong but no one answers",
+            "Administrative justice when the municipality ignores you",
+            "Your constitutional rights don't disappear at the municipal office door"
+        ],
+        real_world_connections=[
+            "Burst pipes going unfixed for weeks", "Electricity prepaid meter errors",
+            "Refuse collection stopping", "Pothole damage claims ignored",
+            "Building plan approvals taking years", "Rates queries unanswered",
+            "Councillors unreachable", "Municipal strike impacts"
+        ]
+    ),
+    "youth_unemployment": ConceptMapping(
+        topic="youth unemployment",
+        principles=[
+            ConstitutionalPrinciple.SOCIAL_SECURITY,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.EQUALITY,
+            ConstitutionalPrinciple.EDUCATION,
+        ],
+        section_references=[27, 10, 9, 29, 22],
+        key_concepts=[
+            "dignity without employment", "equal opportunity",
+            "right to choose occupation", "state duty to address unemployment",
+            "social security for the unemployed"
+        ],
+        perspective_angles=[
+            "What does dignity mean when you've sent 500 CVs with no response?",
+            "Section 22's right to choose your trade - but what if there's no work?",
+            "The equality clause and unpaid internships only for those who can afford them",
+            "When qualifications don't translate to employment"
+        ],
+        real_world_connections=[
+            "Matric results vs job reality", "Graduate unemployment",
+            "EPWP temporary jobs", "Youth wage subsidy", "Internship exploitation",
+            "CV dropping", "LinkedIn vs actual hiring", "Nepotism in hiring"
+        ]
+    ),
+    "digital_divide": ConceptMapping(
+        topic="digital divide",
+        principles=[
+            ConstitutionalPrinciple.ACCESS_TO_INFORMATION,
+            ConstitutionalPrinciple.EDUCATION,
+            ConstitutionalPrinciple.EQUALITY,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+        ],
+        section_references=[32, 29, 9, 10],
+        key_concepts=[
+            "right to access information", "education in digital age",
+            "equality in information access", "digital as essential service",
+            "data costs and constitutional rights"
+        ],
+        perspective_angles=[
+            "Section 32's access to information in a world that assumes you have data",
+            "When 'apply online' excludes those without connectivity",
+            "Educational equality when learning moved to WhatsApp",
+            "Is expensive data a barrier to constitutional rights?"
+        ],
+        real_world_connections=[
+            "Data costs for job applications", "Online learning during COVID",
+            "No signal in rural areas", "Smartphone requirement for services",
+            "WhatsApp for school communication", "E-government excluding citizens",
+            "Banking apps required for grants", "Library internet access"
+        ]
+    ),
+    "taxi_industry": ConceptMapping(
+        topic="taxi industry",
+        principles=[
+            ConstitutionalPrinciple.FREEDOM_MOVEMENT,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.SECURITY_OF_PERSON,
+            ConstitutionalPrinciple.RIGHT_TO_LIFE,
+        ],
+        section_references=[21, 10, 12, 11],
+        key_concepts=[
+            "freedom of movement", "dignity in transport",
+            "safety in public transport", "right to life on the roads",
+            "commuter rights"
+        ],
+        perspective_angles=[
+            "Section 21 freedom of movement - but at what cost and risk?",
+            "Dignity in the daily commute - overloading, routes, fares",
+            "Right to life when taxi violence flares",
+            "The state's duty to regulate for safety vs lived reality"
+        ],
+        real_world_connections=[
+            "Taxi fare increases", "Route conflicts", "Taxi violence",
+            "Overloading", "Long-distance taxi safety", "Taxi rank conditions",
+            "Early morning commutes", "Last-taxi anxiety", "Taxi strikes"
+        ]
+    ),
+    "clinic_queues": ConceptMapping(
+        topic="clinic queues",
+        principles=[
+            ConstitutionalPrinciple.HEALTHCARE,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+            ConstitutionalPrinciple.CHILDREN_RIGHTS,
+        ],
+        section_references=[27, 10, 33, 28],
+        key_concepts=[
+            "right to healthcare access", "dignity in healthcare",
+            "reasonable access to services", "emergency medical treatment",
+            "children's health rights"
+        ],
+        perspective_angles=[
+            "Section 27 says you have the right to healthcare - but how long is the queue?",
+            "Dignity when you're turned away because 'files are finished'",
+            "Administrative justice when your chronic medication runs out",
+            "What 'progressive realization' means at 4am in the clinic queue"
+        ],
+        real_world_connections=[
+            "4am clinic queues", "'Files finished' at 9am",
+            "Chronic medication stock-outs", "Turned away without treatment",
+            "Rude staff encounters", "No privacy during consultations",
+            "Baby clinic days", "TB and HIV treatment access"
+        ]
+    ),
+    "evictions": ConceptMapping(
+        topic="evictions",
+        principles=[
+            ConstitutionalPrinciple.HOUSING,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.PROPERTY_RIGHTS,
+            ConstitutionalPrinciple.CHILDREN_RIGHTS,
+        ],
+        section_references=[26, 10, 25, 28],
+        key_concepts=[
+            "protection against arbitrary eviction", "right to adequate housing",
+            "court order requirement", "alternative accommodation",
+            "balancing property rights and housing needs"
+        ],
+        perspective_angles=[
+            "Section 26 says no one can be evicted without a court order",
+            "What 'adequate housing' means when your shack is marked",
+            "The red paint on the door - notice or threat?",
+            "When your landlord changes the locks while you're at work"
+        ],
+        real_world_connections=[
+            "Red-marked shacks", "Land invasions", "Landlord lockouts",
+            "Back-room evictions", "Rental arrears during COVID",
+            "Eviction in winter", "Where to go after eviction",
+            "Children's schooling after eviction"
+        ]
+    ),
+    "matric_exams": ConceptMapping(
+        topic="matric exams",
+        principles=[
+            ConstitutionalPrinciple.EDUCATION,
+            ConstitutionalPrinciple.EQUALITY,
+            ConstitutionalPrinciple.JUST_ADMINISTRATIVE_ACTION,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+        ],
+        section_references=[29, 9, 33, 10],
+        key_concepts=[
+            "right to basic education", "equal educational opportunity",
+            "fair assessment processes", "remarking rights",
+            "language in education"
+        ],
+        perspective_angles=[
+            "Section 29 guarantees basic education - but does matric determine everything?",
+            "Equality when some schools have and others don't",
+            "Administrative justice in remarking and appeals",
+            "The pressure cooker of matric and mental health"
+        ],
+        real_world_connections=[
+            "Results day anxiety", "University admission cut-offs",
+            "Remarking process", "No-fee schools vs former Model C",
+            "Studying by candlelight during load shedding",
+            "Teachers who disappeared", "NSC vs IEB debate"
+        ]
+    ),
+    "femicide": ConceptMapping(
+        topic="femicide",
+        principles=[
+            ConstitutionalPrinciple.RIGHT_TO_LIFE,
+            ConstitutionalPrinciple.SECURITY_OF_PERSON,
+            ConstitutionalPrinciple.HUMAN_DIGNITY,
+            ConstitutionalPrinciple.EQUALITY,
+        ],
+        section_references=[11, 12, 10, 9],
+        key_concepts=[
+            "right to life", "freedom from violence",
+            "state's duty to protect", "gender-based violence",
+            "dignity and bodily integrity"
+        ],
+        perspective_angles=[
+            "Section 11's right to life and the state's failure to protect",
+            "When reporting to SAPS doesn't stop the violence",
+            "The gap between protection orders and actual protection",
+            "Why another hashtag when the Constitution promises safety"
+        ],
+        real_world_connections=[
+            "SAPS response to GBV reports", "Protection order enforcement",
+            "Bail for perpetrators", "Court delays", "Victim-blaming responses",
+            "Missing women cases", "Shelter availability", "Community responses"
+        ]
+    ),
     "correctional services": ConceptMapping(
         topic="correctional services",
         principles=[
@@ -723,6 +993,58 @@ KEYWORD_CONCEPT_MAP: dict[str, list[str]] = {
     "remand": ["detention"],
     "awaiting trial": ["detention"],
     "accused": ["detention", "correctional services"],
+    # SA trend topic keywords
+    "sassa": ["sassa_grants"],
+    "grant": ["sassa_grants", "social_security"],
+    "grants": ["sassa_grants", "social_security"],
+    "r350": ["sassa_grants"],
+    "srd": ["sassa_grants"],
+    "child support": ["sassa_grants"],
+    "disability grant": ["sassa_grants"],
+    "nsfas": ["nsfas"],
+    "bursary": ["nsfas", "education"],
+    "student funding": ["nsfas"],
+    "allowance": ["nsfas"],
+    "municipality": ["municipality_failures"],
+    "municipal": ["municipality_failures"],
+    "council": ["municipality_failures"],
+    "rates": ["municipality_failures"],
+    "pothole": ["municipality_failures"],
+    "potholes": ["municipality_failures"],
+    "refuse": ["municipality_failures"],
+    "youth": ["youth_unemployment"],
+    "job": ["youth_unemployment"],
+    "jobs": ["youth_unemployment"],
+    "cv": ["youth_unemployment"],
+    "internship": ["youth_unemployment"],
+    "graduate": ["youth_unemployment", "education"],
+    "data": ["digital_divide", "privacy"],
+    "wifi": ["digital_divide"],
+    "internet": ["digital_divide"],
+    "online": ["digital_divide"],
+    "connectivity": ["digital_divide"],
+    "taxi": ["taxi_industry"],
+    "taxis": ["taxi_industry"],
+    "minibus": ["taxi_industry"],
+    "commute": ["taxi_industry"],
+    "rank": ["taxi_industry"],
+    "clinic": ["clinic_queues", "healthcare"],
+    "hospital": ["clinic_queues", "healthcare"],
+    "queue": ["clinic_queues", "sassa_grants"],
+    "medication": ["clinic_queues", "healthcare"],
+    "evict": ["evictions", "housing"],
+    "eviction": ["evictions", "housing"],
+    "evicted": ["evictions", "housing"],
+    "landlord": ["evictions", "housing"],
+    "shack": ["evictions", "housing"],
+    "matric": ["matric_exams", "education"],
+    "exams": ["matric_exams", "education"],
+    "nsc": ["matric_exams"],
+    "results": ["matric_exams"],
+    "femicide": ["femicide", "gbv"],
+    "killed": ["femicide", "gbv"],
+    "murdered": ["femicide", "gbv"],
+    "gbv": ["gbv", "femicide"],
 }
 
 
@@ -864,3 +1186,49 @@ class ConceptMapper:
             mapping: The concept mapping to add
         """
         self.topic_map[mapping.topic.lower()] = mapping
+
+    def get_trending_sa_topics(self) -> list[str]:
+        """Get list of topics mapping to current SA discourse.
+
+        These are topics that reflect real conversations happening
+        in South African society - the things people argue about
+        on Twitter, discuss at taxi ranks, and experience daily.
+
+        Returns:
+            List of trending SA topic names.
+        """
+        # These are the SA-specific trending topics that connect
+        # to everyday South African experiences
+        sa_trend_topics = [
+            "sassa_grants",
+            "nsfas",
+            "municipality_failures",
+            "youth_unemployment",
+            "digital_divide",
+            "taxi_industry",
+            "clinic_queues",
+            "evictions",
+            "matric_exams",
+            "femicide",
+            "load shedding",
+            "corruption",
+            "xenophobia",
+            "gbv",
+            "police brutality",
+            "housing",
+            "water",
+            "education",
+        ]
+
+        # Return only topics that exist in our mapping
+        return [t for t in sa_trend_topics if t in self.topic_map]
+
+    def get_random_sa_topic(self) -> Optional[str]:
+        """Get a random SA trending topic for content generation.
+
+        Returns:
+            A random topic from SA trends, or None if none available.
+        """
+        import random
+        topics = self.get_trending_sa_topics()
+        return random.choice(topics) if topics else None

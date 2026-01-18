@@ -22,6 +22,8 @@ class PatternCategory(Enum):
     CORPORATE_SPEAK = "corporate_speak"
     FILLER_WORDS = "filler_words"
     PASSIVE_VOICE = "passive_voice"
+    SA_PAMPHLET_SPEAK = "sa_pamphlet_speak"
+    SA_AI_CLICHE = "sa_ai_cliche"
 
 
 @dataclass
@@ -179,6 +181,64 @@ class AIPatternFilter:
         r"Make (a|the) (difference|change)",
     ]
 
+    # South African pamphlet speak - government/NGO style language to avoid
+    SA_PAMPHLET_SPEAK = [
+        r"\bgovernment is committed to\b",
+        r"\bensure that all citizens\b",
+        r"\bgoing forward\b",
+        r"\bstakeholder engagement\b",
+        r"\bempowering communities\b",
+        r"\bcapacity building\b",
+        r"\bservice delivery\b",
+        r"\bdevelopmental state\b",
+        r"\bpublic participation\b",
+        r"\bbroad-based\b",
+        r"\bholistic approach\b",
+        r"\bintegrated development\b",
+        r"\bsocio-economic\b",
+        r"\bmulti-stakeholder\b",
+        r"\bimplementation plan\b",
+        r"\bstrategic framework\b",
+        r"\bbetter life for all\b",
+        r"\bworking together\b",
+        r"\bpeople-centred\b",
+        r"\btransformation agenda\b",
+        r"\bnation building\b",
+        r"\bsocial cohesion\b",
+        r"\brestorative justice\b",
+        r"\baccess to justice\b",
+        r"\brule of law\b",
+        r"\bconstitutional democracy\b",
+        r"\bfundamental rights\b",
+        r"\benshrined in\b",
+    ]
+
+    # SA-specific AI cliches - patterns that sound like AI writing about SA
+    SA_AI_CLICHES = [
+        r"This highlights the importance of",
+        r"It is crucial to note",
+        r"In conclusion",
+        r"This demonstrates how",
+        r"serves as a reminder",
+        r"underscores the need",
+        r"plays a (crucial|vital|pivotal) role",
+        r"It is worth noting that",
+        r"This is a (powerful|stark|poignant) reminder",
+        r"speaks to the",
+        r"points to the",
+        r"sheds light on",
+        r"brings to the fore",
+        r"cannot be overemphasized",
+        r"remains a challenge",
+        r"is of paramount importance",
+        r"in the South African context",
+        r"our constitutional dispensation",
+        r"post-apartheid South Africa",
+        r"the democratic era",
+        r"rainbow nation",
+        r"born-free generation",
+    ]
+
     # Alternative openers to suggest
     ALTERNATIVE_OPENERS = [
         "Start with a specific observation or fact",
@@ -240,6 +300,12 @@ class AIPatternFilter:
         self._cta_patterns = [
             re.compile(p, flags) for p in self.GENERIC_CTA
         ]
+        self._sa_pamphlet_patterns = [
+            re.compile(p, flags) for p in self.SA_PAMPHLET_SPEAK
+        ]
+        self._sa_ai_cliche_patterns = [
+            re.compile(p, flags) for p in self.SA_AI_CLICHES
+        ]
 
     def analyze(self, content: str) -> AIPatternReport:
         """Analyze content for AI writing patterns.
@@ -273,6 +339,10 @@ class AIPatternFilter:
 
         # Detect generic CTAs
         patterns.extend(self._detect_generic_cta(content))
+
+        # Detect SA-specific patterns
+        patterns.extend(self._detect_sa_pamphlet_speak(content))
+        patterns.extend(self._detect_sa_ai_cliches(content))
 
         # Calculate metrics
         ai_score = self._calculate_ai_score(content, patterns)
@@ -385,6 +455,34 @@ class AIPatternFilter:
                     position=(match.start(), match.end()),
                     severity=0.6,
                     suggestion="End with a thought-provoking angle instead"
+                ))
+        return patterns
+
+    def _detect_sa_pamphlet_speak(self, content: str) -> list[DetectedPattern]:
+        """Detect South African government/NGO pamphlet speak."""
+        patterns = []
+        for pattern in self._sa_pamphlet_patterns:
+            for match in pattern.finditer(content):
+                patterns.append(DetectedPattern(
+                    category=PatternCategory.SA_PAMPHLET_SPEAK,
+                    matched_text=match.group(),
+                    position=(match.start(), match.end()),
+                    severity=0.7,
+                    suggestion="Replace with everyday SA language - how would someone at a taxi rank say this?"
+                ))
+        return patterns
+
+    def _detect_sa_ai_cliches(self, content: str) -> list[DetectedPattern]:
+        """Detect AI cliches common in SA-themed content."""
+        patterns = []
+        for pattern in self._sa_ai_cliche_patterns:
+            for match in pattern.finditer(content):
+                patterns.append(DetectedPattern(
+                    category=PatternCategory.SA_AI_CLICHE,
+                    matched_text=match.group(),
+                    position=(match.start(), match.end()),
+                    severity=0.8,
+                    suggestion="Rewrite as if telling a friend - be specific and direct"
                 ))
         return patterns
 
@@ -511,6 +609,17 @@ class AIPatternFilter:
                 "Vary the structure - avoid First/Second/Third patterns"
             )
 
+        # SA-specific suggestions
+        if PatternCategory.SA_PAMPHLET_SPEAK in category_counts:
+            suggestions.append(
+                "Drop the government-speak. How would you explain this at a taxi rank or braai?"
+            )
+
+        if PatternCategory.SA_AI_CLICHE in category_counts:
+            suggestions.append(
+                "Stop explaining - start a conversation. What would make someone argue in the replies?"
+            )
+
         # Sentence variance suggestions
         if sentence_variance < 0.3:
             suggestions.append(
@@ -604,3 +713,91 @@ class AIPatternFilter:
         report = self.analyze(content)
         is_valid = report.ai_score <= threshold
         return is_valid, report
+
+    def validate_sa_authenticity(self, content: str) -> tuple[bool, list[str]]:
+        """Check if content sounds authentically South African.
+
+        This method specifically checks for:
+        - SA pamphlet speak (government/NGO style language)
+        - AI cliches common in SA-themed content
+        - Absence of authentic SA voice markers
+
+        Args:
+            content: Content to validate.
+
+        Returns:
+            Tuple of (is_authentic, list_of_issues).
+        """
+        issues = []
+
+        # Check for SA pamphlet speak
+        pamphlet_patterns = self._detect_sa_pamphlet_speak(content)
+        if pamphlet_patterns:
+            issues.append(
+                f"Found {len(pamphlet_patterns)} pamphlet-speak phrase(s): "
+                f"{', '.join(p.matched_text for p in pamphlet_patterns[:3])}"
+            )
+
+        # Check for SA AI cliches
+        ai_cliche_patterns = self._detect_sa_ai_cliches(content)
+        if ai_cliche_patterns:
+            issues.append(
+                f"Found {len(ai_cliche_patterns)} AI cliche(s): "
+                f"{', '.join(p.matched_text for p in ai_cliche_patterns[:3])}"
+            )
+
+        # Check for authentic SA markers (positive indicators)
+        sa_authentic_markers = [
+            r"\beish\b",
+            r"\byoh\b",
+            r"\bja\b",
+            r"\bshame\b",
+            r"\bhectic\b",
+            r"\bsho[oe]?t\b",
+            r"\blekker\b",
+            r"\bmzansi\b",
+            r"\btaxi\b",
+            r"\bspaza\b",
+            r"\bsassa\b",
+            r"\bload ?shedding\b",
+            r"\bmatric\b",
+            r"\bbraai\b",
+            r"\bmunicipality\b",
+            r"\bqueue\b",
+            r"\brands?\b",
+            r"\bclinic\b",
+            r"\bgrant\b",
+        ]
+
+        # Count authentic markers
+        marker_count = 0
+        for marker in sa_authentic_markers:
+            if re.search(marker, content, re.IGNORECASE):
+                marker_count += 1
+
+        # Content with issues but no authentic markers is particularly suspect
+        has_issues = bool(pamphlet_patterns or ai_cliche_patterns)
+        has_authentic_voice = marker_count >= 1
+
+        if has_issues and not has_authentic_voice:
+            issues.append(
+                "Content lacks authentic SA voice markers (no reference to everyday SA experiences)"
+            )
+
+        # Self-check questions (for reporting)
+        content_lower = content.lower()
+
+        # Check if it sounds like a person with opinions
+        opinion_markers = ["i think", "i believe", "honestly", "look,", "here's the thing"]
+        has_opinion_voice = any(m in content_lower for m in opinion_markers)
+
+        if not has_opinion_voice and has_issues:
+            issues.append("Content sounds like facts, not a person with opinions")
+
+        # Check for rhetorical questions (engagement)
+        has_question = "?" in content
+        if not has_question and len(content) > 200:
+            issues.append("No rhetorical questions - may lack engagement")
+
+        is_authentic = len(issues) == 0
+        return is_authentic, issues

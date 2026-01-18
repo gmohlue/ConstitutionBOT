@@ -66,7 +66,7 @@ class ContentGenerator:
         default_synthesis_mode: str = "CHALLENGE",
         ai_pattern_threshold: float = 0.5,
         humanization_retries: int = 2,
-        default_persona: str = "conversational",
+        default_persona: str = "south_african",
         use_scenarios: bool = True,
     ):
         self.session = session
@@ -175,6 +175,7 @@ class ContentGenerator:
         topic = ""
         section_nums = []
         angle = ""
+        hook = ""
         reason = ""
 
         for line in response.split("\n"):
@@ -189,8 +190,17 @@ class ContentGenerator:
                 section_nums = [int(n) for n in re.findall(r"\d+", section_str)]
             elif line.startswith("ANGLE:"):
                 angle = line.replace("ANGLE:", "").strip()
+            elif line.startswith("HOOK:"):
+                hook = line.replace("HOOK:", "").strip()
             elif line.startswith("WHY:"):
                 reason = line.replace("WHY:", "").strip()
+
+        # Use hook as angle if angle is empty but hook is provided
+        if hook and not angle:
+            angle = hook
+        elif hook and angle:
+            # Combine hook and angle for richer context
+            angle = f"{hook} | {angle}"
 
         return TopicSuggestion(
             topic=topic or f"{ctx.document_short_name} education",
@@ -722,7 +732,7 @@ class ContentGenerator:
             temperature=0.8,  # Higher for creative synthesis
         )
 
-        # Apply humanization if needed
+        # Apply humanization if needed (including SA authenticity check)
         formatted = raw_content.strip()
         humanization_applied = False
         ai_score = 0.0
@@ -733,7 +743,10 @@ class ContentGenerator:
             )
             ai_score = report.ai_score
 
-            if is_human_like:
+            # Also check SA authenticity
+            is_sa_authentic, sa_issues = self.ai_filter.validate_sa_authenticity(formatted)
+
+            if is_human_like and is_sa_authentic:
                 break
 
             result = self.persona_writer.humanize_content(formatted, persona_obj)
@@ -819,7 +832,7 @@ class ContentGenerator:
         # Parse thread
         thread = self.formatter.parse_thread(raw_content, topic=topic)
 
-        # Humanize each tweet
+        # Humanize each tweet (including SA authenticity check)
         humanization_applied = False
         total_ai_score = 0.0
 
@@ -832,7 +845,10 @@ class ContentGenerator:
                 )
                 total_ai_score += report.ai_score
 
-                if is_human_like:
+                # Also check SA authenticity
+                is_sa_authentic, sa_issues = self.ai_filter.validate_sa_authenticity(formatted)
+
+                if is_human_like and is_sa_authentic:
                     break
 
                 result = self.persona_writer.humanize_content(formatted, persona_obj)
@@ -1040,7 +1056,7 @@ class ContentGenerator:
             temperature=0.8,  # Slightly higher for creativity
         )
 
-        # Step 6: Humanize and filter with retry loop
+        # Step 6: Humanize and filter with retry loop (including SA authenticity)
         formatted = raw_content.strip()
         humanization_applied = False
         ai_score = 0.0
@@ -1052,7 +1068,10 @@ class ContentGenerator:
             )
             ai_score = report.ai_score
 
-            if is_human_like:
+            # Also check SA authenticity
+            is_sa_authentic, sa_issues = self.ai_filter.validate_sa_authenticity(formatted)
+
+            if is_human_like and is_sa_authentic:
                 break
 
             # Apply humanization
@@ -1192,7 +1211,7 @@ class ContentGenerator:
         # Parse thread
         thread = self.formatter.parse_thread(raw_content, topic=topic)
 
-        # Humanize each tweet with retry
+        # Humanize each tweet with retry (including SA authenticity)
         humanization_applied = False
         total_ai_score = 0.0
 
@@ -1205,7 +1224,10 @@ class ContentGenerator:
                 )
                 total_ai_score += report.ai_score
 
-                if is_human_like:
+                # Also check SA authenticity
+                is_sa_authentic, sa_issues = self.ai_filter.validate_sa_authenticity(formatted)
+
+                if is_human_like and is_sa_authentic:
                     break
 
                 result = self.persona_writer.humanize_content(formatted, persona_obj)
