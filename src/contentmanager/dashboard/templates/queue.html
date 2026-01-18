@@ -507,17 +507,32 @@ function queueData() {
             }
         },
 
+        // Helper to format date as YYYY-MM-DD in South Africa timezone
+        formatDateForInput(date) {
+            return date.toLocaleDateString('en-CA', { timeZone: 'Africa/Johannesburg' });
+        },
+
+        // Helper to format time as HH:MM in South Africa timezone
+        formatTimeForInput(date) {
+            return date.toLocaleTimeString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Africa/Johannesburg'
+            });
+        },
+
         openScheduleModal(item) {
             this.schedulingItem = { ...item };
             if (item.scheduled_for) {
                 const date = new Date(item.scheduled_for);
-                this.scheduleDate = date.toISOString().split('T')[0];
-                this.scheduleTime = date.toTimeString().slice(0, 5);
+                this.scheduleDate = this.formatDateForInput(date);
+                this.scheduleTime = this.formatTimeForInput(date);
                 this.scheduleAutoPost = item.auto_post;
             } else {
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
-                this.scheduleDate = tomorrow.toISOString().split('T')[0];
+                this.scheduleDate = this.formatDateForInput(tomorrow);
                 this.scheduleTime = '09:00';
                 this.scheduleAutoPost = false;
             }
@@ -536,7 +551,8 @@ function queueData() {
                 return;
             }
 
-            const scheduledFor = new Date(`${this.scheduleDate}T${this.scheduleTime}`).toISOString();
+            // Create ISO string with South Africa timezone offset (UTC+2, no daylight saving)
+            const scheduledFor = `${this.scheduleDate}T${this.scheduleTime}:00+02:00`;
 
             try {
                 // If rescheduling, first unschedule
@@ -705,7 +721,15 @@ function queueData() {
         },
 
         formatDate(dateString) {
-            return new Date(dateString).toLocaleString();
+            return new Date(dateString).toLocaleString('en-ZA', {
+                timeZone: 'Africa/Johannesburg',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
         }
     }
 }

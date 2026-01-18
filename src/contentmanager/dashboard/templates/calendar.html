@@ -386,10 +386,26 @@ function calendarData() {
         rescheduleItem(item) {
             this.scheduleItem = item;
             const date = new Date(item.scheduled_for);
-            this.scheduleDate = this.formatLocalDateString(date);
-            this.scheduleTime = date.toTimeString().slice(0, 5);
+            // Format date and time in South Africa timezone
+            this.scheduleDate = this.formatDateForInput(date);
+            this.scheduleTime = this.formatTimeForInput(date);
             this.autoPost = item.auto_post;
             this.showScheduleModal = true;
+        },
+
+        // Helper to format date as YYYY-MM-DD in South Africa timezone
+        formatDateForInput(date) {
+            return date.toLocaleDateString('en-CA', { timeZone: 'Africa/Johannesburg' });
+        },
+
+        // Helper to format time as HH:MM in South Africa timezone
+        formatTimeForInput(date) {
+            return date.toLocaleTimeString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Africa/Johannesburg'
+            });
         },
 
         async unscheduleItem(id) {
@@ -422,7 +438,8 @@ function calendarData() {
                 return;
             }
 
-            const scheduledFor = new Date(`${this.scheduleDate}T${this.scheduleTime}`).toISOString();
+            // Create ISO string with South Africa timezone offset (UTC+2, no daylight saving)
+            const scheduledFor = `${this.scheduleDate}T${this.scheduleTime}:00+02:00`;
 
             try {
                 // First unschedule the item, then reschedule it
@@ -502,9 +519,10 @@ function calendarData() {
                 return;
             }
 
-            // Keep the same time, just change the date
-            const originalTime = originalDate.toTimeString().slice(0, 5);
-            const newScheduledFor = new Date(`${targetDate}T${originalTime}`).toISOString();
+            // Keep the same time, just change the date (time in South Africa timezone)
+            const originalTime = this.formatTimeForInput(originalDate);
+            // Create ISO string with South Africa timezone offset (UTC+2)
+            const newScheduledFor = `${targetDate}T${originalTime}:00+02:00`;
 
             this.dragOverDate = null;
             this.draggedItem = null;
@@ -545,30 +563,33 @@ function calendarData() {
         },
 
         formatTime(dateString) {
-            return new Date(dateString).toLocaleTimeString('en-US', {
+            return new Date(dateString).toLocaleTimeString('en-ZA', {
                 hour: 'numeric',
                 minute: '2-digit',
-                hour12: true
+                hour12: true,
+                timeZone: 'Africa/Johannesburg'
             });
         },
 
         formatDateTime(dateString) {
-            return new Date(dateString).toLocaleString('en-US', {
+            return new Date(dateString).toLocaleString('en-ZA', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
                 hour: 'numeric',
                 minute: '2-digit',
-                hour12: true
+                hour12: true,
+                timeZone: 'Africa/Johannesburg'
             });
         },
 
         formatDateLong(dateString) {
-            return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', {
+            return new Date(dateString + 'T00:00:00').toLocaleDateString('en-ZA', {
                 weekday: 'long',
                 month: 'long',
                 day: 'numeric',
-                year: 'numeric'
+                year: 'numeric',
+                timeZone: 'Africa/Johannesburg'
             });
         }
     }

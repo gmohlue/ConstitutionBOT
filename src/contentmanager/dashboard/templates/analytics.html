@@ -280,6 +280,7 @@ function analyticsData() {
         formatDate(dateStr) {
             const date = new Date(dateStr);
             return date.toLocaleDateString('en-ZA', {
+                timeZone: 'Africa/Johannesburg',
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric'
